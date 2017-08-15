@@ -1,5 +1,5 @@
 def contactCategorizer(s,precision):
-    '''categorizes by successful and unsuccessful and by type of contact home or phone. '''
+    '''categorizes by successful and unsuccessful and by type of contact home or phone.'''
     contactType = [['Unsuccessful','Successful'],['Home Visit','Phone Contact']]
     if s == 'Wrong Number or Number Disconnected/Out of Service':
         if precision == True:

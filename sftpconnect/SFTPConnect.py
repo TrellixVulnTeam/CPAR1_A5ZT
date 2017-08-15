@@ -1,3 +1,4 @@
+import os
 import paramiko
 from pprint import pprint
 from secret import secret
@@ -16,8 +17,17 @@ class SFTPConnect:
 
     def mvGet(self,remotepath,localpath,close):
         '''Moves to a directory in SFTP, lists selection of files to grab '''
+
         self.sftp.chdir(remotepath)
         files = dict(enumerate(self.sftp.listdir()))
+
+        #if a file exists in the local directory put stars to indicate they are present
+        local_dir_files = os.listdir(localpath)
+        for i in files.keys():
+            if files[i] in local_dir_files:
+                file_name = files[i]
+                files[i] = "*{}*".format(file_name)
+
         files[-1] = 'quit'
         selection = None
         pprint(files)
@@ -34,7 +44,16 @@ class SFTPConnect:
             self.sftp.close()
             print("Connection closed")
 
-    # def mvmkPut(self,remotepath,folder=None,files):
-    #     self.sftp.chdir(remotepath)
-    #     if folder != None:
-    #         self.sftp.mkdir(folder)
+    def putDirectory(self, directoryName, remotepath, localpath):
+        '''use if directory does not exist'''
+        self.sftp.chdir(remotepath)
+        self.sftp.mkdir(directoryName)
+        localpath = localpath + directoryName
+
+        for dirpath, dirnames, filenames in os.walk(localpath):
+            for file in filenames:
+                local_file = localpath +'/'+ file
+                remote_filepath = directoryName +'/'+ file
+                self.sftp.put(local_file,remote_filepath)
+        self.sftp.close()
+        print("Connection closed")
