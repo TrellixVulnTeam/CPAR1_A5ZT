@@ -103,7 +103,15 @@ class ConsensusConnect():
         code_name = self.connect(n)
         return code_name
 
-    def contact(self):
+    def contact(self, pat_contacts_only=False):
+        '''pat_contacts_only selects contacts that involve contact with a patient not contacts between staff'''
+
+        if pat_contacts_only == True:
+            extension = """ WHERE pat_contact.ContactPartyGBLCode IN ('Caregiver','Patient','Home')
+            AND pat_contact.ContactTypeGBLcode IN ('Phone - Outbound','Visit','Home')"""
+        else:
+            extension = ""
+
         m = """
             SELECT
                 pat_contact.PatientID,
@@ -119,14 +127,16 @@ class ConsensusConnect():
             FROM
                 pat_contact
             LEFT JOIN
-                pat_patient ON pat_contact.PatientID = pat_patient.ID;"""
+                pat_patient ON pat_contact.PatientID = pat_patient.ID {};""".format(extension)
 
         alli = self.connect(m)
+
         contactPrecise = partial(contactHelper.contactCategorizer, precision=True)
         contactGeneral = partial(contactHelper.contactCategorizer, precision=False)
         alli['ContactTypeSuccess'] = alli['OutcomeStatusGBLCode'].apply(contactPrecise)
         alli['ContactSuccess'] = alli['OutcomeStatusGBLCode'].apply(contactGeneral)
         alli['MedicaidNum'] = alli['MedicaidNum'].apply(PhoneMapHelper.medicaidNormalizer)
+
         return alli
 
     def careplan(self):
