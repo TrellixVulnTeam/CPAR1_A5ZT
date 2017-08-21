@@ -170,6 +170,15 @@ class ConsensusConnect():
         careplan['RIN'] = careplan['RIN'].apply(PhoneMapHelper.medicaidNormalizer)
         return careplan
 
+    def cps_delta(self,table):
+        '''CPS delta files to send monthly'''
+
+        if table in ['membership','participant']:
+            m = "SELECT * FROM cps_{}_delta".format(table)
+            return self.connect(m,db_name='Consensus_Reporting')
+        else:
+            return 'not a valid cps delta table'
+
     def enrollmentStatus(self):
         m = """
         SELECT
