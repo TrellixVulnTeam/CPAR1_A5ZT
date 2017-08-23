@@ -386,7 +386,7 @@ class ConsensusConnect():
     def totalDemo(self,dropCol=False):
         '''Merges enrollment engagement and redcap. There are some patients with one RIN and two Patient IDs'''
         enrollment = self.enrollmentStatus()
-        engagement = self.rpt_engagementDate()
+        engagement = self.engagementDate()
         redcap = self.redcapImport()
         enrollment['RIN'] = enrollment['RIN'].apply(PhoneMapHelper.medicaidNormalizer)
         engagement['RIN'] = engagement['RIN'].apply(PhoneMapHelper.medicaidNormalizer)
