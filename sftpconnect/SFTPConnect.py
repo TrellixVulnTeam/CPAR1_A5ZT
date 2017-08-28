@@ -1,14 +1,14 @@
 import os
 import paramiko
 from pprint import pprint
-from secret import secret
+from secret.secret import secret
 
 class SFTPConnect:
 
     def __init__(self,sftpName,port=22,username="Anonymous",password=""):
         self.sftpName = sftpName
         self.transport = paramiko.Transport((sftpName, port))
-        identifier = secret.getSFTP()
+        identifier = secret().getSFTP()
         if sftpName == identifier[0]:
             username=identifier[1]
             password=identifier[2]

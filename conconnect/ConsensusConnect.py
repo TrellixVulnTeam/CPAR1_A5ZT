@@ -13,7 +13,7 @@ from datetime import datetime
 import numpy as np
 import requests
 import json
-from secret import secret
+from secret.secret import secret
 import time
 from sqlalchemy import (MetaData, Table, Column, Integer, Numeric, String,
                         DateTime, ForeignKey, create_engine, sql)
@@ -263,7 +263,7 @@ class ConsensusConnect():
     def redcapImport(self,red_table='Full_CHECK',dropCol=True):
         '''Outputs the most updated redcap data: dropCol == True returns truncated df'''
 
-        html, token1, token2 = secret.getRedCap()
+        html, token1, token2 = secret().getRedCap()
 
         table_dict = {'Control':{'Table':'rpt_import_control_redcap',
                                 'token':token1,
@@ -278,8 +278,8 @@ class ConsensusConnect():
         except KeyError as err:
             print("{} is not a redcap table!".format(red_table))
             raise
-        __user = secret.getUser()
-        __secret = secret.getSecret()
+        __user = secret().getUser()
+        __secret = secret().getSecret()
         engine = create_engine("mysql+pymysql://{}:{}@localhost:3309/Consensus_Reporting".format(__user,__secret))
         conn = engine.connect()
         output_columns = ['RIN','fn','ln','gender','race_ethnicity','dob','age','address','city','state',
@@ -405,8 +405,8 @@ class ConsensusConnect():
     def connect(self,m,db_name='consensus',proc=False):
         self.connection = pymysql.connect(host='localhost',
                                  port=3309,
-                                 user=secret.getUser(),
-                                 password=secret.getSecret(),
+                                 user=secret().getUser(),
+                                 password=secret().getSecret(),
                                  db=db_name,
                                  charset='utf8mb4',
                                  cursorclass=pymysql.cursors.DictCursor)
