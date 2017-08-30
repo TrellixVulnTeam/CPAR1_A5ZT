@@ -1,3 +1,5 @@
+import pandas as pd
+
 def contactCategorizer(s,precision):
     '''categorizes by successful and unsuccessful and by type of contact home or phone.'''
     contactType = [['Unsuccessful','Successful'],['Home Visit','Phone Contact']]
@@ -31,10 +33,10 @@ def pivotRecentContact(df):
     df.sort_values(['MedicaidNum','OutcomeDateTime'],ascending=[True,False],inplace=True)
     df_pivot = df.pivot_table(index=['MedicaidNum','PatientID'],columns='ContactTypeSuccess',
                               values='OutcomeDateTime',aggfunc='first')
-    df_pivot['Successful Home Visit'] = df_pivot['Successful Home Visit'].dt.date
-    df_pivot['Successful Phone Contact'] = df_pivot['Successful Phone Contact'].dt.date
-    df_pivot['Unsuccessful Home Visit'] = df_pivot['Unsuccessful Home Visit'].dt.date
-    df_pivot['Unsuccessful Phone Contact'] = df_pivot['Unsuccessful Phone Contact'].dt.date
+    df_pivot['Successful Home Visit'] = pd.to_datetime(df_pivot['Successful Home Visit'].dt.date)
+    df_pivot['Successful Phone Contact'] = pd.to_datetime(df_pivot['Successful Phone Contact'].dt.date)
+    df_pivot['Unsuccessful Home Visit'] = pd.to_datetime(df_pivot['Unsuccessful Home Visit'].dt.date)
+    df_pivot['Unsuccessful Phone Contact'] = pd.to_datetime(df_pivot['Unsuccessful Phone Contact'].dt.date)
     return df_pivot
 
 def contactTypeCounter(df):

@@ -170,7 +170,24 @@ class ConsensusConnect():
         careplan['RIN'] = careplan['RIN'].apply(PhoneMapHelper.medicaidNormalizer)
         return careplan
 
-    def cps_delta(self,table):
+    def cpsAttendance(self,table_id):
+        '''returns cps_attendance table that holds all of the CPS data. table_id is equal
+        to the yyyy-mm the file was given, if table_id == 'all' returns all data which is
+        quite large'''
+        # grade == 20 means they are part of the school only peripherally for
+        # certain occupational classes but are not full time students.
+        extension = """WHERE Student_Annual_Grade_Code != '20'"""
+        if table_id == 'all':
+            extension += ""
+        else:
+            extension +=  """ AND File_ID = '{}'""".format(table_id)
+        m = "Select * FROM cps_attendance {}".format(extension)
+        df = self.connect(m,db_name='Consensus_Reporting')
+        df['Date'] = pd.to_datetime(df['Date'])
+
+        return df
+
+    def cpsDelta(self,table):
         '''CPS delta files to send monthly'''
 
         if table in ['membership','participant']:
