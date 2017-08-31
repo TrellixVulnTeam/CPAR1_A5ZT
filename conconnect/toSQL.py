@@ -8,8 +8,8 @@ from sqlalchemy import (MetaData, Table, Column, Integer, Numeric, String,
 __user = secret().getUser()
 __secret = secret().getSecret()
 
-def toSQL(df,exist_method,table):
-    engine = create_engine("mysql+pymysql://{}:{}@localhost:3309/Consensus_Reporting".format(__user,__secret))
+def toSQL(df,exist_method,table,db='Consensus_Reporting'):
+    engine = create_engine("mysql+pymysql://{}:{}@localhost:3309/{}".format(__user,__secret,db))
     df['cdate'] = datetime.datetime.today()
     df['cdate'] = df['cdate'].dt.date
     conn = engine.connect()
@@ -18,6 +18,7 @@ def toSQL(df,exist_method,table):
         df.to_sql(table,con=conn,if_exists=exist_method,index=False)
     except:
         print('Unsuccessful {}'.format(exist_method))
+        raise
     else:
         print('Successful {}'.format(exist_method))
     finally:
