@@ -251,6 +251,32 @@ class ConsensusConnect():
         m = "SELECT * FROM Consensus_Reporting.rpt_import_CHW_file;"
         return self.connect(m,db_name='Consensus_Reporting')
 
+    def pharmacy(self):
+        m = "SELECT * FROM tsc_hfs_pharmacy;"
+        return self.connect(m,db_name="CHECK_CPAR")
+
+    def cpar_patient_info(self):
+        m = """SELECT
+                RecipientID,
+                Age,
+                AgeCategory,
+                Gender,
+                Asthma,
+                Diabetes,
+                SCD,
+                Prematurity,
+                BrainInjury,
+                Epilepsy,
+                DiagnosisCategory,
+                RiskScore,
+                RISK_TIER_NEW AS Risk,
+                EnrolledFlag,
+                EngagedFlag,
+                controlFlag
+            FROM
+                tuc_hfs_check_population_info"""
+        return self.connect(m,db_name="CHECK_CPAR")
+
     def phonequery(self):
         m = """
         SELECT
