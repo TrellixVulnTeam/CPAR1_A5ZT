@@ -72,5 +72,8 @@ class AutoScore():
         dateFrame.drop_duplicates(inplace=True)
         scoredAssessData = scoredAssessData.reset_index()
         scoredAssessData = pd.merge(scoredAssessData,dateFrame,on='PatientID')
+        #for some damn reason a patient can take the assessment more than once...
+        scoredAssessData.sort_values(by=['PatientID','StartDate'], inplace=True)
+        scoredAssessData.drop_duplicates(subset=['PatientID'], inplace=True)
         scoredAssessData.set_index(["PatientID"],inplace=True)
         return scoredAssessData[list(scoredAssessData.columns[-2:])+list(scoredAssessData.columns[:-2])]
