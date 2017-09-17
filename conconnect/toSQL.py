@@ -9,6 +9,13 @@ __user = secret().getUser()
 __secret = secret().getSecret()
 
 def toSQL(df,exist_method,table,db='Consensus_Reporting'):
+    '''
+    df: pandas dataframe to be uploaded to db
+    exist_method: 'append' | 'replace'
+    table: the name of the table, if table name is not in DB and
+    replace is in exist_method will create a new table in db
+    db:which database to connect to.
+    '''
     engine = create_engine("mysql+pymysql://{}:{}@localhost:3309/{}".format(__user,__secret,db))
     df['cdate'] = datetime.datetime.today()
     df['cdate'] = df['cdate'].dt.date

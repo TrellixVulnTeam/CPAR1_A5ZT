@@ -268,6 +268,7 @@ class ConsensusConnect():
                 BrainInjury,
                 Epilepsy,
                 DiagnosisCategory,
+                ICD_list,
                 RiskScore,
                 RISK_TIER_NEW AS Risk,
                 EnrolledFlag,
@@ -422,6 +423,10 @@ class ConsensusConnect():
         m = "act_temp"
         return self.connect(m,db_name='Consensus_Reporting',proc=True)
 
+    def consensusRisk(self):
+        m = "SELECT ID AS PatientID, SeverityLevel AS Consensus_Risk FROM pat_patient"
+        return self.connect(m,db_name='consensus')
+
     def riskHistory(self):
         m = "SELECT * FROM Consensus_Reporting.risk_history;"
         return self.connect(m,db_name='Consensus_Reporting')
@@ -431,6 +436,7 @@ class ConsensusConnect():
         enrollment = self.enrollmentStatus()
         engagement = self.engagementDate()
         redcap = self.redcapImport()
+        con_risk = self.consensusRisk()
         enrollment['RIN'] = enrollment['RIN'].apply(PhoneMapHelper.medicaidNormalizer)
         engagement['RIN'] = engagement['RIN'].apply(PhoneMapHelper.medicaidNormalizer)
         redcap['RIN'] = redcap['RIN'].apply(PhoneMapHelper.medicaidNormalizer)
@@ -440,6 +446,9 @@ class ConsensusConnect():
         tot_merge.loc[~(tot_merge['EngagementDate'].isnull()),'Patient_Type'] = 'Engaged'
         tot_merge.loc[(tot_merge['EngagementDate'].isnull())&
                       (~tot_merge['First_Enrollment_Date'].isnull()),'Patient_Type'] = 'Enrolled'
+
+        #added for reports
+        tot_merge = pd.merge(tot_merge,con_risk,on='PatientID')
         if dropCol == True:
                 tot_merge.drop(labels=['asthma','diabetes','scd','prematurity','newborn',
                 'epilepsy','other_diag','SumDiagnosis','FaerDiagnosis','index'],axis=1,inplace=True)
