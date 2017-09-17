@@ -18,17 +18,18 @@ def redcapDx(enrollmentDF,keepcolumns=None):
     enrollmentDF.loc[:,'SumDiagnosis'] = enrollmentDF[col_list].sum(axis=1)
     #new column that will be used to hold diagnosis string
     enrollmentDF.loc[:,'Diagnosis'] = np.nan
+    #changed as of 9/17/17 for new diagnosis codes
     #if sum diagnosis > 1 that means pt has more than one diagnosis
     #loc[selects rows on conditions,column to be set to new value] = value to set
-    enrollmentDF.loc[enrollmentDF.Epilepsy == 1,'Diagnosis'] = 'Other Diagnosis'
-    enrollmentDF.loc[enrollmentDF['Newborn Brain Injury'] == 1,'Diagnosis'] = 'Other Diagnosis'
-    enrollmentDF.loc[enrollmentDF.SumDiagnosis > 1,'Diagnosis'] = 'Multiple Diagnoses'
+
     #these patients only have one diagnosis so given appropriate diagnosis
     enrollmentDF.loc[enrollmentDF.SumDiagnosis == 0,'Diagnosis'] = 'Other Diagnosis'
-    enrollmentDF.loc[((enrollmentDF.Diabetes == 1)&(enrollmentDF.SumDiagnosis == 1)),'Diagnosis'] = 'Diabetes'
-    enrollmentDF.loc[((enrollmentDF.Asthma == 1)&(enrollmentDF.SumDiagnosis == 1)),'Diagnosis'] = 'Asthma'
-    enrollmentDF.loc[((enrollmentDF.SCD == 1)&(enrollmentDF.SumDiagnosis == 1)),'Diagnosis'] = 'SCD'
-    enrollmentDF.loc[((enrollmentDF.Prematurity == 1)&(enrollmentDF.SumDiagnosis == 1)),'Diagnosis'] = 'Prematurity'
+    enrollmentDF.loc[((enrollmentDF.Asthma == 1)),'Diagnosis'] = 'Asthma'
+    enrollmentDF.loc[((enrollmentDF.Diabetes == 1)),'Diagnosis'] = 'Diabetes'
+    enrollmentDF.loc[enrollmentDF.Epilepsy == 1,'Diagnosis'] = 'Neurological'
+    enrollmentDF.loc[enrollmentDF['Newborn Brain Injury'] == 1,'Diagnosis'] = 'Neurological'
+    enrollmentDF.loc[((enrollmentDF.Prematurity == 1)),'Diagnosis'] = 'Prematurity'
+    enrollmentDF.loc[((enrollmentDF.SCD == 1)),'Diagnosis'] = 'SCD'
 
     if keepcolumns == True:
         enrollmentDF = enrollmentDF[['RIN','Risk Tier (Utilization Tier)','Diagnosis']+col_list]
