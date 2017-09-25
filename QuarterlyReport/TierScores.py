@@ -66,7 +66,8 @@ class TierScores:
                                '17. Takes things that do not belong to him/her'],
                     'ScoreCol' : 'Externalizing Problems'}},
             'PHQ9':{
-                'Clean' : ['1. Little interest or pleasure in doing things?','10. If you checked off any problems, how difficult have these problems made it for you to do your work, take care of things at home, or get along with other people?',
+                'Clean' : ['1. Little interest or pleasure in doing things?',
+                #'10. If you checked off any problems, how difficult have these problems made it for you to do your work, take care of things at home, or get along with other people?',
                            '2. Feeling down, depressed or hopeless?','3. Trouble falling asleep, staying asleep, or sleeping too much? [PHQ9]',
                            '4. Feeling tired, or having little energy?','5. Poor appetite or overeating?','6. Feeling bad about yourself - or feeling that you are a failure, or that you have let yourself or your family down?',
                            '7. Trouble concentrating on things, such as reading the newspaper or watching television?',
@@ -171,7 +172,6 @@ class TierScores:
             else:
                 x = 'Pt appears to have well controlled asthma.'
             return x
-        ACTframe.dropna
         ACTframe['ACT result'] = ACTframe['ACT Total Score'].apply(actScale)
         return ACTframe
 

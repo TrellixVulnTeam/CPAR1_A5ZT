@@ -18,20 +18,23 @@ class AutoScore():
             'PHQ9':{'PHQ9_baseline':['Tier 3 PHQ9 Adult or Caregiver',None],
                     'PHQ9_6mo':['Tier 3 PHQ9 Adult or Caregiver - 6 Month',None],
                     'PHQ9_12mo':['Tier 3 PHQ9 Adult or Caregiver - 12 Month',None]},
-            'ACT':{'ACT_baseline':['Tier 2 Asthma Control Test (ACT) ',None]},
-            'Edinburgh':{'EDI_baseline':['Tier 2 Edinburgh (Post-Partum Depression) ',None]},
+            'ACT':{'ACT_baseline':['Tier 2 Asthma Control Test (ACT)',None]},
+            'Edinburgh':{'EDI_baseline':['Tier 2 Edinburgh (Post-Partum Depression)',None]},
             'MHSPatient':{'MHSPatient_baseline':['Tier 3 Patient Mental Health Screening',None]},
             'MHSParent':{'MHSParent_baseline':['Tier 3 Parent Mental Health Screening',None]},
             'CHAOS':{'CHAOS_baseline':['Tier 2 PROMIS Tool',None],
                      'CHAOS_6mo':['Tier 2 PROMIS Tool - 6 Month',None]}
             }
         self.assessment_data = assessment_data
-
+        self.assessment_data.AssessmentName = self.assessment_data.AssessmentName.str.strip()
     def __call__(self):
         for assessment in self.assessDict:
             print(assessment)
             for subassessment in self.assessDict[assessment]:
                 self.assessDict[assessment][subassessment][1] = self.assessAuto(self.assessDict[assessment][subassessment][0],assessment)
+
+        self.assessDict['Total'] = self.assessmentTotals()
+        print('Total')
         return self.assessDict
 
     def assessmentPivot(self,tier_data,assessmentName):
@@ -77,3 +80,52 @@ class AutoScore():
         scoredAssessData.drop_duplicates(subset=['PatientID'], inplace=True)
         scoredAssessData.set_index(["PatientID"],inplace=True)
         return scoredAssessData[list(scoredAssessData.columns[-2:])+list(scoredAssessData.columns[:-2])]
+
+    def renameColsDic(self,lst,assessment_name,str_append):
+        '''Renames columns for assessmentTotals'''
+        rename_col = {}
+        for col in lst:
+            if col.startswith(assessment_name):
+                rename_col[col] = "_".join([col,str_append])
+            else:
+                rename_col[col] = "_".join([assessment_name,col,str_append])
+        return rename_col
+
+    def assessmentTotals(self):
+        '''Iterates through the scored assessments and stores all of the final scores of the
+        assessments into one dataframe. This does NOT include ACT because ACT is so special'''
+
+        #selects all patients that have an assessment and will be used to join
+        pats_w_assessments = self.assessment_data[['PatientID','Medicaid ID']].drop_duplicates()
+        pats_w_assessments.reset_index(drop=True,inplace=True)
+
+        #PROMIS has several columns of final scores
+        PROMIS_cols = ['StartDate','Anxiety T-Score','Depression T-Score','Emotional T-Score',
+        'Informational T-Score','Instrumental T-Score','Social T-Score']
+
+        for assessment_name in self.assessDict:
+            for subassessment in self.assessDict[assessment_name]:
+                #baseline, 6mo, 12mo assessments
+                #str_append will be used to rename columns
+                str_append = subassessment.split('_')[-1]
+                #selects assessment
+                assessment_df = self.assessDict[assessment_name][subassessment][1]
+                if assessment_name == 'PROMIS':
+                    assesses_scores  = assessment_df[PROMIS_cols]
+                elif assessment_name == 'ACT':
+                    continue
+                else:
+                    tot_score_col = assessment_name + ' Total Score'
+                    assesses_scores = assessment_df[['StartDate',tot_score_col]]
+
+                col_names = self.renameColsDic(assesses_scores.columns,assessment_name,str_append)
+                assesses_scores.rename(columns=col_names,inplace=True)
+                pats_w_assessments = pd.merge(pats_w_assessments,assesses_scores,how='left',
+                                              left_on='PatientID',right_index=True)
+        #remove patients that had none of the assessments
+        remove_rows = list(pats_w_assessments.columns)
+        remove_rows.remove('PatientID')
+        remove_rows.remove('Medicaid ID')
+        pats_w_assessments.dropna(inplace=True,how='all',subset=remove_rows)
+        pats_w_assessments.set_index('PatientID',inplace=True)
+        return pats_w_assessments
