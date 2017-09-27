@@ -3,10 +3,7 @@ import pandas as pd
 from getpass import getpass
 import base64
 import winsound
-from helpers import PhoneMapHelper
-from helpers import contactHelper
 from functools import partial
-from helpers import PhoneMapHelper
 import pymysql
 from datetime import datetime
 import numpy as np
@@ -16,6 +13,9 @@ from secret.secret import secret
 import time
 from sqlalchemy import (MetaData, Table, Column, Integer, Numeric, String,
                         DateTime, ForeignKey, create_engine, sql)
+from helpers import PhoneMapHelper
+from helpers import contactHelper
+from helpers import PhoneMapHelper
 
 class ConsensusConnect():
 
@@ -387,6 +387,7 @@ class ConsensusConnect():
         return self.connect(m,db_name='Consensus_Reporting')
 
     def actScore(self):
+        self.callACT()
         m = "SELECT * FROM Consensus_Reporting.rpt_act_scores;"
         return self.connect(m,db_name='Consensus_Reporting')
 
@@ -418,9 +419,16 @@ class ConsensusConnect():
         m = "SELECT * FROM Consensus_Reporting.faer_numbers;"
         return self.connect(m,db_name='Consensus_Reporting')
 
-    def actProc(self):
-        m = "act_temp"
-        return self.connect(m,db_name='Consensus_Reporting',proc=True)
+    def patientGroup(self):
+        m= """
+            SELECT
+            RecipientID as RIN,
+            Population_Type,
+            Program_date as Program_Date
+            FROM tuc_hfs_rid7_population_rins;"""
+        df =  self.connect(m,db_name="CHECK_CPAR")
+        df['Program_Date'] = pd.to_datetime(pat_group['Program_date'])
+        return df
 
     def consensusRisk(self):
         m = "SELECT ID AS PatientID, SeverityLevel AS Consensus_Risk FROM pat_patient"
@@ -453,6 +461,10 @@ class ConsensusConnect():
                 'epilepsy','other_diag','SumDiagnosis','FaerDiagnosis','index'],axis=1,inplace=True)
         return tot_merge
 
+    def callACT(self):
+        m = 'CALL act_scores();'
+        return self.connect(m,db_name='Consensus_Reporting',proc=True)
+
     def connect(self,m,db_name='consensus',proc=False):
         self.connection = pymysql.connect(host='localhost',
                                  port=3309,
@@ -462,14 +474,12 @@ class ConsensusConnect():
                                  charset='utf8mb4',
                                  cursorclass=pymysql.cursors.DictCursor)
         try:
-            with self.connection.cursor() as cursor:
-                if proc == False:
+            if proc == True:
+                with self.connection.cursor() as cursor:
                     cursor.execute(m)
-                    result = cursor.fetchall()
-                    alliDF = pd.read_sql(m,con=self.connection)
-                else:
-                    cursor.callproc(m)
-                    alliDF = print('Success')
+                    alliDF = None
+            elif proc == False:
+                alliDF = pd.read_sql(m,con=self.connection)
         finally:
             self.alertsound()
             self.connection.close()
