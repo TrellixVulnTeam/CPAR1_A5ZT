@@ -92,40 +92,35 @@ class AutoScore():
         return rename_col
 
     def assessmentTotals(self):
-        '''Iterates through the scored assessments and stores all of the final scores of the
+        '''Creates a pivot table for the scored assessments and stores all of the final scores of the
         assessments into one dataframe. This does NOT include ACT because ACT is so special'''
 
-        #selects all patients that have an assessment and will be used to join
-        pats_w_assessments = self.assessment_data[['PatientID','Medicaid ID']].drop_duplicates()
-        pats_w_assessments.reset_index(drop=True,inplace=True)
+        PROMIS_cols = ['Anxiety T-Score','Depression T-Score','Emotional T-Score',
+                       'Informational T-Score','Instrumental T-Score','Social T-Score']
 
-        #PROMIS has several columns of final scores
-        PROMIS_cols = ['StartDate','Anxiety T-Score','Depression T-Score','Emotional T-Score',
-        'Informational T-Score','Instrumental T-Score','Social T-Score']
+        col_names = ['AssessmentName','Sequence','Score_Type','StartDate','Total Score']
+
+        total_score_df = pd.DataFrame(columns=col_names)
+        total_score_df.index.rename('PatientID',inplace=True)
 
         for assessment_name in self.assessDict:
-            for subassessment in self.assessDict[assessment_name]:
-                #baseline, 6mo, 12mo assessments
-                #str_append will be used to rename columns
-                str_append = subassessment.split('_')[-1]
-                #selects assessment
-                assessment_df = self.assessDict[assessment_name][subassessment][1]
-                if assessment_name == 'PROMIS':
-                    assesses_scores  = assessment_df[PROMIS_cols]
-                elif assessment_name == 'ACT':
-                    continue
-                else:
-                    tot_score_col = assessment_name + ' Total Score'
-                    assesses_scores = assessment_df[['StartDate',tot_score_col]]
+            if assessment_name == 'ACT':
+                continue
+            else:
+                for sub_assess in self.assessDict[assessment_name]:
+                    assessment = self.assessDict[assessment_name][sub_assess][1].copy()
+                    assessment['AssessmentName'] = assessment_name
+                    sequence = sub_assess.split('_')[1].capitalize()
+                    assessment['Sequence'] = sequence
+                    if assessment_name == 'PROMIS':
+                        for i in PROMIS_cols:
+                            assessment['Score_Type'] = i
+                            assessment['Total Score'] = assessment[i]
+                            total_score_df = total_score_df.append(assessment[col_names])
+                    else:
+                        assessment['Score_Type'] = 'Total Score'
+                        total_score_df = total_score_df.append(assessment[col_names])
+        total_score_df.reset_index(inplace=True)
+        pivot_total_score_df = total_score_df.pivot_table(index='PatientID',columns=['AssessmentName','Score_Type','Sequence'],values=['Total Score','StartDate'])
 
-                col_names = self.renameColsDic(assesses_scores.columns,assessment_name,str_append)
-                assesses_scores.rename(columns=col_names,inplace=True)
-                pats_w_assessments = pd.merge(pats_w_assessments,assesses_scores,how='left',
-                                              left_on='PatientID',right_index=True)
-        #remove patients that had none of the assessments
-        remove_rows = list(pats_w_assessments.columns)
-        remove_rows.remove('PatientID')
-        remove_rows.remove('Medicaid ID')
-        pats_w_assessments.dropna(inplace=True,how='all',subset=remove_rows)
-        pats_w_assessments.set_index('PatientID',inplace=True)
-        return pats_w_assessments
+        return pivot_total_score_df

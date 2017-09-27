@@ -20,9 +20,6 @@ def redcapDx(enrollmentDF,keepcolumns=None):
     enrollmentDF.loc[:,'Diagnosis'] = np.nan
     #changed as of 9/17/17 for new diagnosis codes
     #if sum diagnosis > 1 that means pt has more than one diagnosis
-    #loc[selects rows on conditions,column to be set to new value] = value to set
-
-    #these patients only have one diagnosis so given appropriate diagnosis
     enrollmentDF.loc[enrollmentDF.SumDiagnosis == 0,'Diagnosis'] = 'Other Diagnosis'
     enrollmentDF.loc[((enrollmentDF.Asthma == 1)),'Diagnosis'] = 'Asthma'
     enrollmentDF.loc[((enrollmentDF.Diabetes == 1)),'Diagnosis'] = 'Diabetes'

@@ -121,7 +121,7 @@ class TierScores:
     def newFrameSum(self,i):
         ##Manager method of frameMaker and scoreSum
         self.newFrame = self.frameMaker(i)
-        self.scoreSum(self.newFrame,self.dataDic[i]['Clean'],i + ' Total Score')
+        self.scoreSum(self.newFrame,self.dataDic[i]['Clean'],'Total Score')
         return self.newFrame
 
     def PSC(self,onlyScores=None):
@@ -135,14 +135,14 @@ class TierScores:
             self.scoreSum(pscFrame,self.dataDic['PSC'][i]['Clean'],
                           self.dataDic['PSC'][i]['ScoreCol'])
 
-        pscFrame['PSC Total Score'] = (pscFrame['Externalizing Problems'] +
+        pscFrame['Total Score'] = (pscFrame['Externalizing Problems'] +
                                             pscFrame['Internalizing Problems'] +
                                             pscFrame['Attention Problems'])
         #Creates categorical columns
         pscFrame['Attention Problems At Risk? (Score Q(6-10) > 7)'] = pscFrame['Attention Problems'] >= 7
         pscFrame['Internalizing Problems At Risk? (Score Q(1-5) > 5)'] = pscFrame['Internalizing Problems'] >= 5
         pscFrame['Externalizing Problems At Risk? (Score Q(11-17) > 7)'] = pscFrame['Externalizing Problems'] >= 7
-        pscFrame['PSC Total Score >= 15'] = pscFrame['PSC Total Score'] >= 15
+        pscFrame['PSC Total Score >= 15'] = pscFrame['Total Score'] >= 15
         return pscFrame
 
     def Edinburgh(self,onlyScores=None):
@@ -158,9 +158,9 @@ class TierScores:
             else:
                 x = 'High probability of experiencing clinical depression.'
             return x
-        ediFrame['Edi-Scale'] = ediFrame['Edinburgh Total Score'].apply(ediScale)
+        ediFrame['Edi-Scale'] = ediFrame['Total Score'].apply(ediScale)
         if onlyScores == True:
-            return ediFrame[['Record ID','Patient ID','CHW', 'Edinburgh Total Score','Edi-Scale']]
+            return ediFrame[['Record ID','Patient ID','CHW', 'Total Score','Edi-Scale']]
         return ediFrame
 
     def ACT(self,onlyScores=None):
@@ -178,9 +178,9 @@ class TierScores:
     def CHAOS(self,onlyScores=None):
         '''Chaos scoring: drops any that has zero on sum.'''
         CHAOS = self.newFrameSum('CHAOS')
-        CHAOS = CHAOS.loc[CHAOS['CHAOS Total Score']!=0,:]
+        CHAOS = CHAOS.loc[CHAOS['Total Score']!=0,:]
         if onlyScores == True:
-            return CHAOS[['Record ID','Patient ID','CHW','CHAOS Total Score']]
+            return CHAOS[['Record ID','Patient ID','CHW','Total Score']]
         else:
             return CHAOS
 
@@ -213,21 +213,21 @@ class TierScores:
     def MHSParent(self, onlyScores=None):
         MHSParent = self.newFrameSum('MHSParent')
         if onlyScores == True:
-            return MHSParent[['Record ID','Patient ID','CHW','MHSParent Total Score']]
+            return MHSParent[['Record ID','Patient ID','CHW','Total Score']]
         return MHSParent
 
     def MHSPatient(self, onlyScores=None):
         MHSPatient = self.newFrameSum('MHSPatient')
         if onlyScores == True:
-            return MHSPatient[['Record ID','Patient ID','CHW','MHSPatient Total Score']]
+            return MHSPatient[['Record ID','Patient ID','CHW','Total Score']]
         return MHSPatient
 
     def PHQ9(self, onlyScores=None):
         PHQ9 = self.newFrameSum('PHQ9')
-        PHQ9['PHQ9 Result'] = PHQ9['PHQ9 Total Score'].apply(self.PHQscale)
+        PHQ9['PHQ9 Result'] = PHQ9['Total Score'].apply(self.PHQscale)
         return PHQ9
 
     def PHQA(self,onlyScores=None):
         PHQA = self.newFrameSum('PHQA')
-        PHQA['PHQA Result'] = PHQA['PHQA Total Score'].apply(self.PHQscale)
+        PHQA['PHQA Result'] = PHQA['Total Score'].apply(self.PHQscale)
         return PHQA

@@ -35,9 +35,7 @@ class monthlyReports():
         my_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
         month = my_date.strftime("%b")
         file_name = "ACT_{}_Report_{}.xlsx".format(month,date)
-
-        trun_act_df.to_excel(file_name,index=False)
-        self.printOutput(file_name)
+        self.printFileOutput(trun_act_df,file_name)
 
     def activeEngagedBCBS(self):
 
@@ -57,10 +55,7 @@ class monthlyReports():
                                    'dob_x':'dob','Risk_y':'Risk','Status':'Enrollment_Status'},inplace=True)
 
         bcbs_redcap = bcbs_redcap.loc[bcbs_redcap['Enrollment_Status']=='Active']
-
-        file_name = reportHelper.fileNameDate("Active_Engaged_BCBS_Report")
-        bcbs_redcap.to_excel(file_name,index=False)
-        self.printOutput(file_name)
+        self.printFileOutput(bcbs_redcap,"Active_Engaged_BCBS_Report")
 
     def enrolledNotEngaged(self):
 
@@ -73,9 +68,7 @@ class monthlyReports():
         active_enrolled_assigned['AssignedTo'] = active_enrolled_assigned['AssignedTo'].fillna("Unassigned")
         active_enrolled_assigned = active_enrolled_assigned[['PatientID','RIN','AssignedTo','First_Enrollment_Date']]
 
-        file_name = reportHelper.fileNameDate("Enrolled_Not_Engaged_Report")
-        active_enrolled_assigned.to_excel(file_name,index=False)
-        self.printOutput(file_name)
+        self.printFileOutput(active_enrolled_assigned,"Enrolled_Not_Engaged_Report")
 
     def careplanMonthlyReports(self):
 
@@ -119,12 +112,8 @@ class monthlyReports():
 
         engaged_no_careplan['AssignedTo'] = engaged_no_careplan['AssignedTo'].fillna('Unassigned')
 
-        file_name_1 = reportHelper.fileNameDate("Engaged_no_careplan")
-        file_name_2 = reportHelper.fileNameDate("Engaged_careplan")
-        engaged_no_careplan.to_excel(file_name_1,index=False)
-        engaged_careplan.to_excel(file_name_2,index=False)
-        self.printOutput(file_name_1)
-        self.printOutput(file_name_2)
+        self.printFileOutput(engaged_no_careplan,"Engaged_no_careplan")
+        self.printFileOutput(engaged_careplan,"Engaged_careplan")
 
     def activeMCO(self):
         pat_care_team = self.dataHolder('patCareTeam')
@@ -136,9 +125,16 @@ class monthlyReports():
 
         active_mco = pd.merge(active_mco,pat_care_team,how='left',on='PatientID')
         active_mco = active_mco[['PatientID','Status','mco_ace_type']]
-        file_name = reportHelper.fileNameDate("Patient_CHW_MCO")
-        active_mco.to_excel(file_name,index=False)
-        self.printOutput(file_name)
+        self.printFileOutput(active_mco,"Patient_CHW_MCO")
+
+    def runAll(self,start_date,end_date):
+
+        self.actReport(start_date,end_date)
+        self.activeEngagedBCBS()
+        self.enrolledNotEngaged()
+        self.careplanMonthlyReports()
+        self.activeMCO()
+
 
 
     def dataHolder(self,query):
@@ -159,5 +155,7 @@ class monthlyReports():
                 self.redcapImport = self.connection.redcapImport(dropCol=False)
             return self.redcapImport
 
-    def printOutput(self,file_name):
+    def printFileOutput(self,df,file_name):
+        file_name = reportHelper.fileNameDate(file_name)
+        df.to_excel(file_name,index=False)
         print("File Name: {}".format(file_name))
