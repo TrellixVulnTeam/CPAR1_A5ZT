@@ -6,7 +6,6 @@ import winsound
 from helpers import PhoneMapHelper
 from helpers import contactHelper
 from functools import partial
-from conconnect import ConsensusConnect
 from helpers import PhoneMapHelper
 import pymysql
 from datetime import datetime
