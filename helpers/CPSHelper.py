@@ -11,7 +11,7 @@ def attendanceCalc(df,chronic_col=False):
     df['Chronic_Absent'] = df['Att_Percent']<.9
 
 def columnClean(df):
-    '''Re'''
+    '''Renames the columns so they all have the same capitalized and _ format between column words'''
     col_rename = {'EngagementDate':'Engagement_Date','FaerDiagnosis':'Faer_Diagnosis','Student_ID':'Student_ID',
     'PatientID':'Patient_ID','RIN':'RIN','scd':'SCD','dob':'DOB'}
     for i in list(df.columns):
