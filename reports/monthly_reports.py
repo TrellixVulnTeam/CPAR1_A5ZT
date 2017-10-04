@@ -2,15 +2,15 @@ import datetime
 import os
 import shutil
 import pandas as pd
-from conconnect import ConsensusConnect
+from conconnect import conconnect
 from helpers import reportHelper
-
+from helpers import contactHelper
 
 class monthlyReports():
 
     def __init__(self):
         #creates a directory which the reports will go into
-        self.connection = ConsensusConnect.ConsensusConnect()
+        self.connection = conconnect.ConsensusConnect()
         os.chdir("/Users/gmunoz/Projects/Reports/Output_Data/")
         fileName = '{:%Y-%m-%d}'.format(datetime.date.today())
         if os.path.exists(fileName):
@@ -23,10 +23,12 @@ class monthlyReports():
 
 
     def actReport(self,start_date,end_date):
+        # start date and end date need following format yyyy-mm-dd
         act_df = self.connection.actScore()
         pat_care_team = self.dataHolder('patCareTeam')
 
-        print("ACT last updated {}, call act_temp() in mysql for more recent ".format(act_df['cdate'][0].date()))
+        # print("ACT last updated {}, call act_temp() in mysql for more recent ".format(act_df['cdate'][0].date()))
+        act_df['StartDate'] = pd.to_datetime(act_df['StartDate'])
         trun_act_df = act_df.loc[act_df['StartDate'].between(start_date,end_date)]
         trun_act_df = trun_act_df[['PatientID','StartDate','Assessment_Count','ACT_Total_Score','ACT_Result']]
         trun_act_df = pd.merge(trun_act_df,pat_care_team,on='PatientID',how='left')
@@ -34,7 +36,7 @@ class monthlyReports():
         date = datetime.date.today()
         my_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
         month = my_date.strftime("%b")
-        file_name = "ACT_{}_Report_{}.xlsx".format(month,date)
+        file_name = "ACT_{}_Report_".format(month)
         self.printFileOutput(trun_act_df,file_name)
 
     def activeEngagedBCBS(self):
@@ -49,10 +51,10 @@ class monthlyReports():
         bcbs_redcap = pd.merge(bcbs_redcap,demography,on='RIN')
 
         bcbs_redcap = bcbs_redcap[['PatientID','RIN','ln_x','fn_x','gender_x',
-                                   'dob_x','Risk_y','Status','Patient_Type']]
+                                   'dob_x','Status','Patient_Type']]
 
         bcbs_redcap.rename(columns={'ln_x':'last_name','fn_x':'first_name','gender_x':'gender',
-                                   'dob_x':'dob','Risk_y':'Risk','Status':'Enrollment_Status'},inplace=True)
+                                   'dob_x':'dob','Status':'Enrollment_Status'},inplace=True)
 
         bcbs_redcap = bcbs_redcap.loc[bcbs_redcap['Enrollment_Status']=='Active']
         self.printFileOutput(bcbs_redcap,"Active_Engaged_BCBS_Report")
@@ -127,15 +129,14 @@ class monthlyReports():
         active_mco = active_mco[['PatientID','Status','mco_ace_type']]
         self.printFileOutput(active_mco,"Patient_CHW_MCO")
 
-    def runAll(self,start_date,end_date):
-
+    def runAll(self):
+        start_date = input("Start Date for ACT Report (yyyy-mm-dd): ")
+        end_date = input("End Date for ACT Report (yyyy-mm-dd): ")
         self.actReport(start_date,end_date)
         self.activeEngagedBCBS()
         self.enrolledNotEngaged()
         self.careplanMonthlyReports()
         self.activeMCO()
-
-
 
     def dataHolder(self,query):
         '''Intakes a query name for conconnect, the goal is to save time on queries by storing

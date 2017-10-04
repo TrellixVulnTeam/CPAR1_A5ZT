@@ -1,6 +1,6 @@
 import pandas as pd
-from QuarterlyReport import TierScores
-from conconnect.ConsensusConnect import ConsensusConnect
+from quarterly_report import tier_scores
+from conconnect.conconnect import ConsensusConnect
 import datetime
 
 class AutoScore():
@@ -45,7 +45,7 @@ class AutoScore():
 
     def assessAuto(self,assessment,subAssess):
         rawAssessData, assessment_data = self.assessmentPivot(self.assessment_data,assessment)
-        preScoredAssessData = TierScores.TierScores(rawAssessData)
+        preScoredAssessData = tier_scores.TierScores(rawAssessData)
         if subAssess == 'PROMIS':
             scoredAssessData = preScoredAssessData.PROMIS()
         elif subAssess == 'PSC':
@@ -57,9 +57,10 @@ class AutoScore():
         elif subAssess == 'ACT':
             # ACT does not work like any other scored assessments as it gets over ridden the data is made
             # by a stored procedure in my sql call rpt_act_scores
-            scoredAssessData = ConsensusConnect().actScore()
+            connection = ConsensusConnect()
+            scoredAssessData = connection.actScore()
             scoredAssessData['AssessmentName'] = assessment
-            print("ACT last updated {}, call act_temp() in mysql for more recent ".format(scoredAssessData['cdate'][0].date()))
+            print("ACT updated {}".format(scoredAssessData['cdate'][0]))
             return scoredAssessData
         elif subAssess == 'Edinburgh':
             scoredAssessData = preScoredAssessData.Edinburgh()
@@ -121,6 +122,8 @@ class AutoScore():
                         assessment['Score_Type'] = 'Total Score'
                         total_score_df = total_score_df.append(assessment[col_names])
         total_score_df.reset_index(inplace=True)
-        pivot_total_score_df = total_score_df.pivot_table(index='PatientID',columns=['AssessmentName','Score_Type','Sequence'],values=['Total Score','StartDate'])
+        pivot_total_score_df = total_score_df.pivot_table(index='PatientID',
+                                                          columns=['AssessmentName','Score_Type','Sequence'],
+                                                          values=['Total Score','StartDate'],aggfunc='first')
 
         return pivot_total_score_df
