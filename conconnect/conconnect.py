@@ -196,36 +196,19 @@ class ConsensusConnect():
             return 'not a valid cps delta table'
 
     def enrollmentStatus(self):
-        m = """
-        SELECT
-            PatientID,
-            PatientClientNumber AS RIN,
-            MIN(EnrollDate) AS First_Enrollment_Date,
-            MAX(EnrollDate) AS Last_Enrollment_Date,
-            MAX(DisEnrollDate) AS DisEnrollment_Date,
-            IF((DisEnrollDate IS NULL)
-                    OR (MAX(EnrollDate) > MAX(DisEnrollDate)),
-                'Active',
-                'Inactive') AS 'Status'
-        FROM
-            pat_planpateligibility
-        WHERE
-            PlanID = 1
-        GROUP BY PatientClientNumber
-        ORDER BY PatientID, PlanID;"""
-        return self.connect(m)
+        m = """SELECT * FROM  rpt_patient_enrollment"""
+        return self.connect(m,db_name='Consensus_Reporting')
+
+    def icdDescription(self):
+        m = """SELECT * FROM  rpt_patient_enrollment"""
+        return self.connect(m,db_name='Consensus_Reporting')
 
     def tier1Date(self):
         m = """
             SELECT
-                PatientID, `Medicaid ID`, MIN(StartDate) StartDate, StatusCode
+                PatientID, RIN, StartDate, StatusCode
             FROM
-                Consensus_Reporting.rpt_All_Tier1
-            WHERE
-                StatusCode IN ('Completed', 'In Process')
-                    AND
-                `Medicaid ID` is not null
-            GROUP BY `Medicaid ID`
+                Consensus_Reporting.rpt_Tier1
             ORDER BY PatientID;
             """
         return self.connect(m,db_name='Consensus_Reporting')
@@ -254,9 +237,13 @@ class ConsensusConnect():
         m = "SELECT * FROM tsc_hfs_pharmacy;"
         return self.connect(m,db_name="CHECK_CPAR")
 
+    def icdDescription(self):
+        m = "SELECT * FROM icd_descriptions;"
+        return self.connect(m,db_name="Consensus_Reporting")
+
     def cpar_patient_info(self):
         m = """SELECT
-                RecipientID,
+                RecipientID AS RIN,
                 Age,
                 AgeCategory,
                 Gender,
@@ -303,7 +290,7 @@ class ConsensusConnect():
         """
         return self.connect(m)
 
-    def redcapImport(self,red_table='Full_CHECK',dropCol=True):
+    def redcapImport(self,red_table='Full_CHECK',dropCol=True,newest=True):
         '''Outputs the most updated redcap data: dropCol == True returns truncated df'''
 
         html, token1, token2 = secret().getRedCap()
@@ -326,60 +313,65 @@ class ConsensusConnect():
         engine = create_engine("mysql+pymysql://{}:{}@localhost:3309/Consensus_Reporting".format(__user,__secret))
         conn = engine.connect()
         output_columns = ['RIN','fn','ln','gender','race_ethnicity','dob','age','address','city','state',
-                          'zip_code','Risk','asthma','diabetes','scd','prematurity','newborn','epilepsy',
-                          'other_diag','Diagnosis','FaerDiagnosis']
+                          'zip_code','RISK','asthma','diabetes','scd','prematurity','newborn','epilepsy',
+                          'other_diag','Diagnosis','FaerDiagnosis','upload_date']
 
         if red_table == 'Control':
             output_columns.remove('race_ethnicity')
 
         redcap_old = pd.read_sql(db,conn)
-        last_upload = redcap_old['upload_date'][0]
-        conn.close()
-        if last_upload.date() == datetime.today().date():
+        last_upload = redcap_old['upload_date'].max()
+        today = datetime.today().date()
+        if last_upload.date() == today:
             #if the file was uploaded today no need to drop data set
             # and add pull from mysql
             if dropCol==True:
                 redcap_old = redcap_old[output_columns]
+            if newest == True:
+                redcap_old = redcap_old.loc[redcap_old['upload_date'].dt.date==today]
             return redcap_old
         else:
-            print('Retrieving data from the Redcap API')
-            # Set the url and path to the redcap API
-            content='record'
-            data_format='json'
-            params={'token':token,'content':content,'format':data_format}
-            r = requests.post(html,data=params)
-            data = r.json()
-            columns = list(data[0].keys())
-            redcap = pd.DataFrame(data,columns=columns)
-            redcap_copy = redcap.copy()
-            redcap_copy.replace('',np.nan,inplace=True)
-            if red_table == 'Control':
-                redcap_copy['other_diag'] = ''
+            try:
+                print('Retrieving data from the Redcap API')
+                # Set the url and path to the redcap API
+                content='record'
+                data_format='json'
+                params={'token':token,'content':content,'format':data_format}
+                r = requests.post(html,data=params)
+                data = r.json()
+                columns = list(data[0].keys())
+                redcap = pd.DataFrame(data,columns=columns)
+                redcap_copy = redcap.copy()
+                redcap_copy.replace('',np.nan,inplace=True)
+                if red_table == 'Control':
+                    redcap_copy['other_diag'] = ''
 
-            redcap_copy['zip_code'] = redcap_copy['zip_code'].apply(PhoneMapHelper.zipConvert)
-            #rename columns, the identifier columns are different between tables
-            redcap_copy.rename(columns={table_dict[red_table]['ID_Col']:
-                                        'RIN','risk':'Risk'},inplace=True)
+                redcap_copy['zip_code'] = redcap_copy['zip_code'].apply(PhoneMapHelper.zipConvert)
+                #rename columns, the identifier columns are different between tables
+                redcap_copy.rename(columns={table_dict[red_table]['ID_Col']:
+                                            'RIN','RISK':'Risk'},inplace=True)
 
-            redcap_copy = PhoneMapHelper.redcapDiagnosis(redcap_copy)
-            redcap_copy['RIN'] = redcap_copy['RIN'].apply(PhoneMapHelper.medicaidNormalizer)
-            redcap_copy['dob'] = pd.to_datetime(redcap_copy['dob'])
-            redcap_copy['age'] = (datetime.today() - redcap_copy['dob']).astype('timedelta64[Y]')
-            redcap_copy['upload_date'] = datetime.today()
+                redcap_copy = PhoneMapHelper.redcapDiagnosis(redcap_copy)
+                redcap_copy['RIN'] = redcap_copy['RIN'].apply(PhoneMapHelper.medicaidNormalizer)
+                redcap_copy['dob'] = pd.to_datetime(redcap_copy['dob'])
+                redcap_copy['age'] = (datetime.today() - redcap_copy['dob']).astype('timedelta64[Y]')
+                redcap_copy['upload_date'] = datetime.today()
 
-            mco_dict = {'1':'UI Health Plus','2':'Harmony','3':'Access','4':'Meridian',
-                        '5':'FHN','6':'County Care','7':'Blue Cross Blue Shield',
-                        '8':'Straight Medicaid','9':'Other', '0':'N/A'}
-            if red_table != 'Control':
-                redcap_copy['mco_ace_type'].replace(mco_dict,inplace=True)
-            conn = engine.connect()
-            metadata= MetaData()
-            metadata.reflect(bind=engine)
-            old_table = metadata.tables[db]
-            old_table.drop(engine)
-            redcap_copy.to_sql(db,conn)
-            if dropCol==True:
-                redcap_copy = redcap_copy[output_columns]
+                mco_dict = {'1':'UI Health Plus','2':'Harmony','3':'Access','4':'Meridian',
+                            '5':'FHN','6':'County Care','7':'Blue Cross Blue Shield',
+                            '8':'Straight Medicaid','9':'Other', '0':'N/A'}
+
+                if red_table != 'Control':
+                    #appends the newest to history and replaces the old_redcap with newest.
+                    redcap_copy['mco_ace_type'].replace(mco_dict,inplace=True)
+                    conn.execute("TRUNCATE TABLE rpt_import_redcap")
+                    redcap_copy.to_sql('rpt_import_redcap',conn,if_exists='append',index=False)
+                    redcap_copy.to_sql('redcap_history',conn,if_exists='append',index=False)
+
+                if dropCol==True:
+                    redcap_copy = redcap_copy[output_columns]
+            finally:
+                conn.close()
             return redcap_copy
 
     def faerPatientFile(self):
@@ -427,7 +419,7 @@ class ConsensusConnect():
             Program_date as Program_Date
             FROM tuc_hfs_rid7_population_rins;"""
         df =  self.connect(m,db_name="CHECK_CPAR")
-        df['Program_Date'] = pd.to_datetime(pat_group['Program_date'])
+        df['Program_Date'] = pd.to_datetime(df['Program_Date'])
         return df
 
     def consensusRisk(self):

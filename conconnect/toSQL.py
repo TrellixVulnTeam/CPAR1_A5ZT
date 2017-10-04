@@ -2,8 +2,7 @@ import datetime
 import pymysql.cursors
 import pandas as pd
 from secret.secret import secret
-from sqlalchemy import (MetaData, Table, Column, Integer, Numeric, String,
-                        DateTime, create_engine, delete)
+from sqlalchemy import create_engine
 
 __user = secret().getUser()
 __secret = secret().getSecret()
