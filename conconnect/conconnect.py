@@ -243,7 +243,7 @@ class ConsensusConnect():
 
     def cpar_patient_info(self):
         m = """SELECT
-                RecipientID AS RIN,
+                RecipientID,
                 Age,
                 AgeCategory,
                 Gender,
@@ -253,6 +253,7 @@ class ConsensusConnect():
                 Prematurity,
                 BrainInjury,
                 Epilepsy,
+                TOTAL,
                 DiagnosisCategory,
                 ICD_list,
                 RiskScore,
@@ -313,7 +314,7 @@ class ConsensusConnect():
         engine = create_engine("mysql+pymysql://{}:{}@localhost:3309/Consensus_Reporting".format(__user,__secret))
         conn = engine.connect()
         output_columns = ['RIN','fn','ln','gender','race_ethnicity','dob','age','address','city','state',
-                          'zip_code','RISK','asthma','diabetes','scd','prematurity','newborn','epilepsy',
+                          'zip_code','risk','asthma','diabetes','scd','prematurity','newborn','epilepsy',
                           'other_diag','Diagnosis','FaerDiagnosis','upload_date']
 
         if red_table == 'Control':
@@ -348,14 +349,13 @@ class ConsensusConnect():
 
                 redcap_copy['zip_code'] = redcap_copy['zip_code'].apply(PhoneMapHelper.zipConvert)
                 #rename columns, the identifier columns are different between tables
-                redcap_copy.rename(columns={table_dict[red_table]['ID_Col']:
-                                            'RIN','RISK':'Risk'},inplace=True)
+                redcap_copy.rename(columns={table_dict[red_table]['ID_Col']:'RIN'},inplace=True)
 
                 redcap_copy = PhoneMapHelper.redcapDiagnosis(redcap_copy)
                 redcap_copy['RIN'] = redcap_copy['RIN'].apply(PhoneMapHelper.medicaidNormalizer)
                 redcap_copy['dob'] = pd.to_datetime(redcap_copy['dob'])
-                redcap_copy['age'] = (datetime.today() - redcap_copy['dob']).astype('timedelta64[Y]')
-                redcap_copy['upload_date'] = datetime.today()
+                redcap_copy['age'] = (today - redcap_copy['dob']).astype('timedelta64[Y]')
+                redcap_copy['upload_date'] = today
 
                 mco_dict = {'1':'UI Health Plus','2':'Harmony','3':'Access','4':'Meridian',
                             '5':'FHN','6':'County Care','7':'Blue Cross Blue Shield',
