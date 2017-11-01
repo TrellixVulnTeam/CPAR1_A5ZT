@@ -7,7 +7,7 @@ def fileNameDate(file_name,ext='.xlsx'):
     return file_name
 
 def table_count_maker(df,groupby_list,count_value,presentation=False):
-    '''Takes a pandas dataframe groups by the list, counts rows and outputs a
+    '''Takes a pandas dataframe groups by list, counts rows and outputs a
     formatted dataframe for easy export. Presentation removes columns.
     To Do: It is currently built to only aggregate a list of length 2'''
 
