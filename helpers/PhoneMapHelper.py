@@ -78,14 +78,3 @@ def redcapDiagnosis(df):
     df['FaerDiagnosis'] = df['FaerDiagnosis'].apply(diagnosisCleaner)
 
     return df
-
-def newDiagnosis(df):
-    '''df: should be the cpar_patient_info table'''
-    df['Updated_DiagnosisCategory'] = np.nan
-    df.loc[df['Asthma']==1,'Updated_DiagnosisCategory'] = 'Asthma'
-    df.loc[df['Diabetes']==1,'Updated_DiagnosisCategory'] = 'Diabetes'
-    df.loc[(df['BrainInjury']==1)|(df['Epilepsy']==1),'Updated_DiagnosisCategory'] = 'Neurological'
-    df.loc[df['Prematurity']==1, 'Updated_DiagnosisCategory'] = 'Prematurity'
-    df.loc[df['SCD'] == 1,'Updated_DiagnosisCategory'] ='SCD'
-    df['Updated_DiagnosisCategory'] = df['Updated_DiagnosisCategory'].fillna('Other Diagnoses')
-    return df

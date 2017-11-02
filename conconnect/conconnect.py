@@ -50,7 +50,8 @@ class ConsensusConnect():
                 qst_response.YesNo,
                 qst_response.Range,
                 qst_response.Text,
-                qst_response.CTS AS 'Question CTS'
+                qst_response.CTS AS 'Question CTS',
+                qst_response.CUserID
             FROM
                 (pat_assessment
                 JOIN gbl_clientassessment ON (pat_assessment.ClientAssessmentID = gbl_clientassessment.ID)
@@ -78,6 +79,7 @@ class ConsensusConnect():
         code_name = self.assessmentCodeValues()
         alli = pd.merge(alli,code_name,left_on=['QuestionText','Range'],right_on=['QuestionText','IntegerValue'],how='left')
         alli.drop(['IntegerValue','ID','CodeName'],axis=1,inplace=True)
+        alli['CUserID'] = alli['CUserID'].str.lower().str.strip()
         alli.loc[(alli.YesNo==0),'Response'] = 'No'
         alli.loc[(alli.YesNo==1),'Response'] = 'Yes'
         return alli
@@ -101,6 +103,10 @@ class ConsensusConnect():
             gbl_code.CodeName LIKE 'Question %';"""
         code_name = self.connect(n)
         return code_name
+
+    def claimsDx(self):
+        m = """SELECT * FROM  vw_claims_dx"""
+        return self.connect(m,db_name='Consensus_Reporting')
 
     def contact(self, pat_contacts_only=False):
         '''pat_contacts_only selects contacts that involve contact with a patient not contacts between staff'''
@@ -291,7 +297,7 @@ class ConsensusConnect():
         """
         return self.connect(m)
 
-    def redcapImport(self,red_table='Full_CHECK',dropCol=True,newest=True):
+    def redcapImport(self,red_table='Full_CHECK',dropCol=True,newest=True,force_update=False):
         '''Outputs the most updated redcap data: dropCol == True returns truncated df'''
 
         html, token1, token2 = secret().getRedCap()
@@ -323,7 +329,7 @@ class ConsensusConnect():
         redcap_old = pd.read_sql(db,conn)
         last_upload = redcap_old['upload_date'].max()
         today = datetime.today().date()
-        if last_upload.date() == today:
+        if last_upload.date() == today and force_update == False:
             #if the file was uploaded today no need to drop data set
             # and add pull from mysql
             if dropCol==True:

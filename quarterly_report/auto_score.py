@@ -8,7 +8,8 @@ class AutoScore():
         self.assessDict = {
             'PROMIS':{'PROMIS_baseline':['Tier 2 PROMIS Tool',None],
                       'PROMIS_6mo':['Tier 2 PROMIS Tool - 6 Month',None],
-                      'PROMIS_12mo':['Tier 2 PROMIS Tool - 12 Month',None]},
+                      'PROMIS_12mo':['Tier 2 PROMIS Tool - 12 Month',None],
+                      'PROMIS_18mo':['Tier 2 PROMIS Tool - 18 Month',None]},
             'PSC':{'PSC17_baseline':['Tier 2 Pediatric Symptom Checklist (PSC-17) Caregiver',None],
                    'PSC17_6mo':['Tier 2 Pediatric Symptom Checklist (PSC-17) Caregiver - 6 Month',None],
                    'PSC17_12mo':['Tier 2 Pediatric Symptom Checklist (PSC-17) Caregiver - 12 Month',None]},
@@ -70,9 +71,9 @@ class AutoScore():
             scoredAssessData = preScoredAssessData.MHSParent()
         elif subAssess == 'CHAOS':
             scoredAssessData = preScoredAssessData.CHAOS()
-        #gives the assessment name to df and then merges to get start date of test. Can be used to append any column
+        #gives the assessment name to df and then merges to get start date of assessment. Can be used to append any column
         scoredAssessData['AssessmentName'] = assessment
-        dateFrame = assessment_data[['PatientID','StartDate']]
+        dateFrame = assessment_data[['PatientID','StartDate','CUserID']]
         dateFrame.drop_duplicates(inplace=True)
         scoredAssessData = scoredAssessData.reset_index()
         scoredAssessData = pd.merge(scoredAssessData,dateFrame,on='PatientID')

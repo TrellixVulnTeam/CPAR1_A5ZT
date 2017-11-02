@@ -12,8 +12,8 @@ def attendanceCalc(df,chronic_col=False):
 
 def columnClean(df):
     '''Renames the columns so they all have the same capitalized and _ format between column words'''
-    col_rename = {'EngagementDate':'Engagement_Date','FaerDiagnosis':'Faer_Diagnosis','Student_ID':'Student_ID',
-    'PatientID':'Patient_ID','RIN':'RIN','scd':'SCD','dob':'DOB'}
+    col_rename = {'EngagementDate':'Engagement_Date','FaerDiagnosis':'Faer_Diagnosis','STUDENT_ID':'Student_ID',
+    'PatientID':'Patient_ID','Medicaid Rin':'RIN','scd':'SCD','dob':'DOB'}
     for i in list(df.columns):
         if i not in list(col_rename.keys()):
             col_rename[i] = "_".join(i.split('_')).title()
