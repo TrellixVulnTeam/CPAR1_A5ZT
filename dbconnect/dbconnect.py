@@ -57,7 +57,7 @@ class DatabaseConnect():
         '''
         try:
             connection = self.connection_obj()
-            self.query("DELETE FROM {}".format(), df_flag=False)
+            self.query("DELETE FROM {}".format(tbl), df_flag=False)
             df.to_sql(name=tbl,con=connection,if_exists='append',index=False)
         except:
             raise Exception
