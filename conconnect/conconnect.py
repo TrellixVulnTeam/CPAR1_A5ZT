@@ -1,21 +1,18 @@
-import pymysql.cursors
-import pandas as pd
-from getpass import getpass
 import base64
-import winsound
-from functools import partial
-import pymysql
 from datetime import datetime
+from getpass import getpass
+from functools import partial
 import numpy as np
+import pandas as pd
+import pymysql.cursors
+import pymysql
 import requests
-import json
-from secret.secret import secret
+import winsound
 import time
-from sqlalchemy import (MetaData, Table, Column, Integer, Numeric, String,
-                        DateTime, ForeignKey, create_engine, sql)
+from sqlalchemy import create_engine
+from secret.secret import secret
 from helpers import PhoneMapHelper
 from helpers import contactHelper
-from helpers import PhoneMapHelper
 
 class ConsensusConnect():
 
@@ -145,35 +142,7 @@ class ConsensusConnect():
         return alli
 
     def careplan(self):
-        m = """
-        SELECT
-            ch.PatientID,
-            pat.MedicaidNum RIN,
-            ch.StartDate,
-            ch.EndDate,
-            ch.`Status`,
-            count(pro.ProblemDescription) PendingOutComes,
-            inter.InterventionDesc,
-            go.GoalDescription,
-            max(go.GoalDueDate) ExpirationDate
-        FROM
-            pat_craheader ch
-                LEFT JOIN
-            pat_cradiagnosis cd ON ch.ID = cd.CRAHeaderID
-                LEFT JOIN
-            pat_problem pro ON cd.ID = pro.CRADiagnosisID
-                LEFT JOIN
-            pat_intervention inter ON pro.ID = inter.ProblemID
-                LEFT JOIN
-            pat_goaloutcome go ON inter.ID = go.InterventionID
-                LEFT JOIN
-            pat_patient pat ON ch.PatientID = pat.ID
-        WHERE ch.`Status` IN ('New','In Process','Completed') AND MedicaidNum IS NOT NULL
-        GROUP BY cd.ID
-        ORDER BY ch.PatientID ASC"""
-        careplan = self.connect(m)
-        careplan['RIN'] = careplan['RIN'].apply(PhoneMapHelper.medicaidNormalizer)
-        return careplan
+        return self.connect("SELECT * FROM vw_careplan",db_name='Consensus_Reporting')
 
     def cpsAttendance(self,table_id):
         '''returns cps_attendance table that holds all of the CPS data. table_id is equal
@@ -183,10 +152,10 @@ class ConsensusConnect():
         # certain occupational classes but are not full time students.
         extension = """WHERE Student_Annual_Grade_Code != '20'"""
         if table_id == 'all':
-            extension += ""
+            extension = " _current " + extension
         else:
             extension +=  """ AND File_ID = '{}'""".format(table_id)
-        m = "Select * FROM cps_attendance {}".format(extension)
+        m = "Select * FROM cps_attendance{}".format(extension)
         df = self.connect(m,db_name='Consensus_Reporting')
         df['Date'] = pd.to_datetime(df['Date'])
 
@@ -205,9 +174,13 @@ class ConsensusConnect():
         m = """SELECT * FROM  rpt_patient_enrollment"""
         return self.connect(m,db_name='Consensus_Reporting')
 
-    def icdDescription(self):
-        m = """SELECT * FROM  rpt_patient_enrollment"""
+    def meEnrollmentStatus(self):
+        m = """SELECT * FROM  vw_current_enrollment"""
         return self.connect(m,db_name='Consensus_Reporting')
+
+    def enrollmentDB(self):
+        m = """SELECT * FROM  tbl_enrollment"""
+        return self.connect(m,db_name='CHECK_Enrollment_DB')
 
     def tier1Date(self):
         m = """
@@ -226,13 +199,11 @@ class ConsensusConnect():
         return self.connect(m,db_name='Consensus_Reporting')
 
     def harmonyGroups(self):
-        m = """
-            SELECT * FROM harmony_groups;
-            """
+        m = "SELECT * FROM harmony_groups;"
         return self.connect(m,db_name='Consensus_Reporting')
 
     def chwmapping(self):
-        m = "SELECT * FROM Consensus_Reporting.rpt_temp_patient_chw_mapping WHERE NetID is not NULL;"
+        m = "SELECT * FROM Consensus_Reporting.live_patient_chw_mapping;"
         return self.connect(m,db_name='Consensus_Reporting')
 
     def chwquery(self):
@@ -317,7 +288,7 @@ class ConsensusConnect():
             raise
         __user = secret().getUser()
         __secret = secret().getSecret()
-        engine = create_engine("mysql+pymysql://{}:{}@localhost:3309/Consensus_Reporting".format(__user,__secret))
+        engine = create_engine("mysql+pymysql://{}:{}@localhost:3306/Consensus_Reporting".format(__user,__secret))
         conn = engine.connect()
         output_columns = ['RIN','fn','ln','gender','race_ethnicity','dob','age','address','city','state',
                           'zip_code','risk','asthma','diabetes','scd','prematurity','newborn','epilepsy',
@@ -465,7 +436,7 @@ class ConsensusConnect():
 
     def connect(self,m,db_name='consensus',proc=False):
         self.connection = pymysql.connect(host='localhost',
-                                 port=3309,
+                                 port=3306,
                                  user=secret().getUser(),
                                  password=secret().getSecret(),
                                  db=db_name,
@@ -477,7 +448,7 @@ class ConsensusConnect():
                     cursor.execute(m)
                     alliDF = None
             elif proc == False:
-                alliDF = pd.read_sql(m,con=self.connection)
+                alliDF = pd.read_sql(m,con=self.connection )
         finally:
             self.alertsound()
             self.connection.close()
