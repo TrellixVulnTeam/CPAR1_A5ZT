@@ -110,7 +110,7 @@ class ConsensusConnect():
 
         if pat_contacts_only == True:
             extension = """ WHERE pat_contact.ContactPartyGBLCode IN ('Caregiver','Patient','Home')
-            AND pat_contact.ContactTypeGBLcode IN ('Phone - Outbound','Visit','Home')"""
+            AND pat_contact.ContactTypeGBLcode IN ('Phone - Outbound','Visit','Home','Phone - Inbound')"""
         else:
             extension = ""
 
@@ -144,18 +144,13 @@ class ConsensusConnect():
     def careplan(self):
         return self.connect("SELECT * FROM vw_careplan",db_name='Consensus_Reporting')
 
-    def cpsAttendance(self,table_id):
+    def cpsAttendance(self):
         '''returns cps_attendance table that holds all of the CPS data. table_id is equal
         to the yyyy-mm the file was given, if table_id == 'all' returns all data which is
         quite large'''
         # grade == 20 means they are part of the school only peripherally for
         # certain occupational classes but are not full time students.
-        extension = """WHERE Student_Annual_Grade_Code != '20'"""
-        if table_id == 'all':
-            extension = " _current " + extension
-        else:
-            extension +=  """ AND File_ID = '{}'""".format(table_id)
-        m = "Select * FROM cps_attendance{}".format(extension)
+        m = "Select * FROM cps_attendance_current WHERE Student_Annual_Grade_Code != 20"
         df = self.connect(m,db_name='Consensus_Reporting')
         df['Date'] = pd.to_datetime(df['Date'])
 
@@ -194,9 +189,9 @@ class ConsensusConnect():
 
     def engagementDate(self):
         m = """
-            SELECT * FROM rpt_engagement_date;
+            SELECT PatientID, RecipientID, Engagement_Date FROM tbl_enrollment WHERE Engagement_Date is not Null
             """
-        return self.connect(m,db_name='Consensus_Reporting')
+        return self.connect(m,db_name='CHECK_Enrollment_DB')
 
     def harmonyGroups(self):
         m = "SELECT * FROM harmony_groups;"
@@ -268,89 +263,6 @@ class ConsensusConnect():
         """
         return self.connect(m)
 
-    def redcapImport(self,red_table='Full_CHECK',dropCol=True,newest=True,force_update=False):
-        '''Outputs the most updated redcap data: dropCol == True returns truncated df'''
-
-        html, token1, token2 = secret().getRedCap()
-
-        table_dict = {'Control':{'Table':'rpt_import_control_redcap',
-                                'token':token1,
-                                'ID_Col':'record_id'},
-                      'Full_CHECK':{'Table':'rpt_import_redcap',
-                                    'token':token2,
-                                    'ID_Col':'rin'}}
-
-        try:
-            db = table_dict[red_table]['Table']
-            token = table_dict[red_table]['token']
-        except KeyError as err:
-            print("{} is not a redcap table!".format(red_table))
-            raise
-        __user = secret().getUser()
-        __secret = secret().getSecret()
-        engine = create_engine("mysql+pymysql://{}:{}@localhost:3306/Consensus_Reporting".format(__user,__secret))
-        conn = engine.connect()
-        output_columns = ['RIN','fn','ln','gender','race_ethnicity','dob','age','address','city','state',
-                          'zip_code','risk','asthma','diabetes','scd','prematurity','newborn','epilepsy',
-                          'other_diag','Diagnosis','FaerDiagnosis','upload_date']
-
-        if red_table == 'Control':
-            output_columns.remove('race_ethnicity')
-
-        redcap_old = pd.read_sql(db,conn)
-        last_upload = redcap_old['upload_date'].max()
-        today = datetime.today().date()
-        if last_upload.date() == today and force_update == False:
-            #if the file was uploaded today no need to drop data set
-            # and add pull from mysql
-            if dropCol==True:
-                redcap_old = redcap_old[output_columns]
-            if newest == True:
-                redcap_old = redcap_old.loc[redcap_old['upload_date'].dt.date==today]
-            return redcap_old
-        else:
-            try:
-                print('Retrieving data from the Redcap API')
-                # Set the url and path to the redcap API
-                content='record'
-                data_format='json'
-                params={'token':token,'content':content,'format':data_format}
-                r = requests.post(html,data=params)
-                data = r.json()
-                columns = list(data[0].keys())
-                redcap = pd.DataFrame(data,columns=columns)
-                redcap_copy = redcap.copy()
-                redcap_copy.replace('',np.nan,inplace=True)
-                if red_table == 'Control':
-                    redcap_copy['other_diag'] = ''
-
-                redcap_copy['zip_code'] = redcap_copy['zip_code'].apply(PhoneMapHelper.zipConvert)
-                #rename columns, the identifier columns are different between tables
-                redcap_copy.rename(columns={table_dict[red_table]['ID_Col']:'RIN'},inplace=True)
-
-                redcap_copy = PhoneMapHelper.redcapDiagnosis(redcap_copy)
-                redcap_copy['RIN'] = redcap_copy['RIN'].apply(PhoneMapHelper.medicaidNormalizer)
-                redcap_copy['dob'] = pd.to_datetime(redcap_copy['dob'])
-                redcap_copy['age'] = (today - redcap_copy['dob']).astype('timedelta64[Y]')
-                redcap_copy['upload_date'] = today
-
-                mco_dict = {'1':'UI Health Plus','2':'Harmony','3':'Access','4':'Meridian',
-                            '5':'FHN','6':'County Care','7':'Blue Cross Blue Shield',
-                            '8':'Straight Medicaid','9':'Other', '0':'N/A'}
-
-                if red_table != 'Control':
-                    #appends the newest to history and replaces the old_redcap with newest.
-                    redcap_copy['mco_ace_type'].replace(mco_dict,inplace=True)
-                    conn.execute("TRUNCATE TABLE rpt_import_redcap")
-                    redcap_copy.to_sql('rpt_import_redcap',conn,if_exists='append',index=False)
-                    redcap_copy.to_sql('redcap_history',conn,if_exists='append',index=False)
-
-                if dropCol==True:
-                    redcap_copy = redcap_copy[output_columns]
-            finally:
-                conn.close()
-            return redcap_copy
-
     def faerPatientFile(self):
         m = "SELECT * FROM Consensus_Reporting.rpt_temp_faer_patient;"
         return self.connect(m,db_name='Consensus_Reporting')
@@ -391,11 +303,16 @@ class ConsensusConnect():
     def patientGroup(self):
         m= """
             SELECT
-            RecipientID as RIN,
-            Population_Type,
-            Program_date as Program_Date
-            FROM tuc_hfs_rid7_population_rins;"""
-        df =  self.connect(m,db_name="CHECK_CPAR")
+            RecipientID,
+            E4,
+            E2,
+            HE4,
+            HE2,
+            HC,
+            Program_Date
+            FROM tbl_population_release
+            WHERE releaseNum = (SELECT MAX(ReleaseNum) FROM tbl_population_release)"""
+        df =  self.connect(m,db_name="CHECK_Enrollment_DB")
         df['Program_Date'] = pd.to_datetime(df['Program_Date'])
         return df
 
@@ -409,26 +326,19 @@ class ConsensusConnect():
 
     def totalDemo(self,dropCol=False):
         '''Merges enrollment engagement and redcap. There are some patients with one RIN and two Patient IDs'''
-        enrollment = self.enrollmentStatus()
-        engagement = self.engagementDate()
-        redcap = self.redcapImport()
+        m = """SELECT
+                te.*, cs.Current_Enrollment_Status, cs.`Group`, pg.E2, pg.E4, pg.HE2, pg.HE4, pg.Program_Date
+            FROM
+                CHECK_Enrollment_DB.tbl_enrollment te
+                    LEFT JOIN
+                CHECK_Enrollment_DB.vw_current_total_patient_status cs ON te.RecipientID = cs.RecipientID
+            		LEFT JOIN
+            	CHECK_Enrollment_DB.vw_current_patient_groupings pg on pg.RecipientID = te.RecipientID;"""
+        df =  self.connect(m,db_name="CHECK_CPAR")
         con_risk = self.consensusRisk()
-        enrollment['RIN'] = enrollment['RIN'].apply(PhoneMapHelper.medicaidNormalizer)
-        engagement['RIN'] = engagement['RIN'].apply(PhoneMapHelper.medicaidNormalizer)
-        redcap['RIN'] = redcap['RIN'].apply(PhoneMapHelper.medicaidNormalizer)
-        enroll_engage_merge = pd.merge(enrollment,engagement,on='RIN',how='left',suffixes=('', '_y'))
-        tot_merge = pd.merge(enroll_engage_merge,redcap,on='RIN',how='left')
-        tot_merge.drop(labels='PatientID_y',axis=1,inplace=True)
-        tot_merge.loc[~(tot_merge['EngagementDate'].isnull()),'Patient_Type'] = 'Engaged'
-        tot_merge.loc[(tot_merge['EngagementDate'].isnull())&
-                      (~tot_merge['First_Enrollment_Date'].isnull()),'Patient_Type'] = 'Enrolled'
+        enrollment = pd.merge(df,con_risk,on='PatientID')
 
-        #added for reports
-        tot_merge = pd.merge(tot_merge,con_risk,on='PatientID')
-        if dropCol == True:
-                tot_merge.drop(labels=['asthma','diabetes','scd','prematurity','newborn',
-                'epilepsy','other_diag','SumDiagnosis','FaerDiagnosis','index'],axis=1,inplace=True)
-        return tot_merge
+        return enrollment
 
     def callACT(self):
         m = 'CALL act_scores();'

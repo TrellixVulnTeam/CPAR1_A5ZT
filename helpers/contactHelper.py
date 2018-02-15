@@ -15,6 +15,10 @@ def contactCategorizer(s,precision):
         if precision == True:
             return contactType[0][1] + ' ' + contactType[1][1]
         return contactType[0][1]
+    elif s == 'Declined/Opted Out of Program':
+        if precision == True:
+            return contactType[0][1] + ' ' + contactType[1][1]
+        return contactType[0][1]
     elif s == 'Face to face visit successful':
         if precision == True:
             return contactType[0][1] + ' ' + contactType[1][0]

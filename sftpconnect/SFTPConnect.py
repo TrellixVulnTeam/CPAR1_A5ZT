@@ -5,18 +5,17 @@ from secret.secret import secret
 
 class SFTPConnect:
 
-    def __init__(self,sftpName,port=22,username="Anonymous",password=""):
-        self.sftpName = sftpName
-        self.transport = paramiko.Transport((sftpName, port))
-        identifier = secret().getSFTP()
-        if sftpName == identifier[0]:
-            username=identifier[1]
-            password=identifier[2]
-        self.transport.connect(username = username, password = password)
+    def __init__(self,port=22,username="Anonymous",password=""):
+
+
+        identifier = secret().getSFTP(username)
+        self.sftpName = identifier[0]
+        self.transport = paramiko.Transport((self.sftpName, port))
+        self.transport.connect(username=username, password=identifier[2])
         self.sftp = paramiko.SFTPClient.from_transport(self.transport)
 
     def mvGet(self,remotepath,localpath,close):
-        '''Moves to a directory in SFTP, lists selection of files to grab '''
+        '''Moves to a directory in a SFTP and lists files to grab '''
 
         self.sftp.chdir(remotepath)
         files = dict(enumerate(self.sftp.listdir()))
@@ -55,5 +54,7 @@ class SFTPConnect:
                 local_file = localpath +'/'+ file
                 remote_filepath = directoryName +'/'+ file
                 self.sftp.put(local_file,remote_filepath)
+                print(file)
+        print('Have been uploaded to {}'.format(remotepath))
         self.sftp.close()
         print("Connection closed")
