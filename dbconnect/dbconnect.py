@@ -5,7 +5,7 @@ from secret import secret
 
 class DatabaseConnect():
     def __init__(self,database):
-        _sec = secret()
+        _sec = secret.secret()
         self.hostname = _sec.getHost()
         self.username = _sec.getUser()
         self.password = _sec.getSecret()
