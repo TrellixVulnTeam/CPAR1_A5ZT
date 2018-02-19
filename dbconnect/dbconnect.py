@@ -1,17 +1,19 @@
 import configparser
 from sqlalchemy import create_engine
 import pandas as pd
-from secret.secret import secret
+from secret import secret
 
 class DatabaseConnect():
     def __init__(self,database):
-        self.hostname = secret().getHost()
-        self.username = secret().getUser()
-        self.password = secret().getSecret()
+        _sec = secret()
+        self.hostname = _sec.getHost()
+        self.username = _sec.getUser()
+        self.password = _sec.getSecret()
+        self.port = _sec.getPort()
         self.database = database
 
     def connection_obj(self):
-        engine = create_engine("mysql+pymysql://{}:{}@{}:3306/{}".format(self.username,self.password,self.hostname,self.database))
+        engine = create_engine("mysql+pymysql://{}:{}@{}:{}/{}".format(self.username,self.password,self.hostname,self.port,self.database))
         connection = engine.connect()
         return connection
 
