@@ -45,7 +45,6 @@ class DatabaseConnect():
             connection = self.connection_obj()
             df.to_sql(name=tbl,con=connection,if_exists='append',index=False)
             connection.close()
-            print("Appened to tbl")
         except:
             raise Exception
 
@@ -59,5 +58,6 @@ class DatabaseConnect():
             connection = self.connection_obj()
             self.query("DELETE FROM {}".format(tbl), df_flag=False)
             df.to_sql(name=tbl,con=connection,if_exists='append',index=False)
+            connection.close()
         except:
             raise Exception
