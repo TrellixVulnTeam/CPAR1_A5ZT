@@ -1,18 +1,12 @@
-import base64
 from datetime import datetime
-from getpass import getpass
 from functools import partial
 import numpy as np
 import pandas as pd
-import pymysql.cursors
-import pymysql
-import requests
 import winsound
 import time
-from sqlalchemy import create_engine
-from secret.secret import secret
 from helpers import PhoneMapHelper
 from helpers import contactHelper
+from dbconnect import dbconnect
 
 class ConsensusConnect():
 
@@ -62,7 +56,7 @@ class ConsensusConnect():
             AND qst_response.ResponseDate BETWEEN pat_assessment.CTS AND pat_assessment.EndDate
             ORDER BY pat_assessment.PatientID , pat_assessment.ClientAssessmentID , pat_assessment.StartDate;""".format(assessment)
 
-        alli = self.connect(m)
+        alli = self.connect(m,db_name='consensus')
         #if 'InTime Range == 2 than the question fits within the window of responses, if the question does not fit in window the
         #point is removed as it could be associated with another assessment. This would cause problems for Preassessment data as that
         #data has non coinciding dates
@@ -98,7 +92,7 @@ class ConsensusConnect():
             gbl_codevalue ON gbl_code.CodeName = gbl_codevalue.CodeName
         WHERE
             gbl_code.CodeName LIKE 'Question %';"""
-        code_name = self.connect(n)
+        code_name = self.connect(n,db_name='consensus')
         return code_name
 
     def claimsDx(self):
@@ -131,7 +125,7 @@ class ConsensusConnect():
             LEFT JOIN
                 pat_patient ON pat_contact.PatientID = pat_patient.ID {};""".format(extension)
 
-        alli = self.connect(m)
+        alli = self.connect(m,db_name='consensus')
 
         contactPrecise = partial(contactHelper.contactCategorizer, precision=True)
         contactGeneral = partial(contactHelper.contactCategorizer, precision=False)
@@ -165,14 +159,6 @@ class ConsensusConnect():
         else:
             return 'not a valid cps delta table'
 
-    def enrollmentStatus(self):
-        m = """SELECT * FROM  rpt_patient_enrollment"""
-        return self.connect(m,db_name='Consensus_Reporting')
-
-    def meEnrollmentStatus(self):
-        m = """SELECT * FROM  vw_current_enrollment"""
-        return self.connect(m,db_name='Consensus_Reporting')
-
     def enrollmentDB(self):
         m = """SELECT * FROM  tbl_enrollment"""
         return self.connect(m,db_name='CHECK_Enrollment_DB')
@@ -194,8 +180,8 @@ class ConsensusConnect():
         return self.connect(m,db_name='CHECK_Enrollment_DB')
 
     def harmonyGroups(self):
-        m = "SELECT * FROM harmony_groups;"
-        return self.connect(m,db_name='Consensus_Reporting')
+        m = "SELECT * FROM CHECK_Enrollment_DB.vw_harmony_randomization_groups_current;;"
+        return self.connect(m,db_name='CHECK_Enrollment_DB')
 
     def chwmapping(self):
         m = "SELECT * FROM Consensus_Reporting.live_patient_chw_mapping;"
@@ -337,29 +323,23 @@ class ConsensusConnect():
         df =  self.connect(m,db_name="CHECK_CPAR")
         con_risk = self.consensusRisk()
         enrollment = pd.merge(df,con_risk,on='PatientID')
-
         return enrollment
 
     def callACT(self):
         m = 'CALL act_scores();'
-        return self.connect(m,db_name='Consensus_Reporting',proc=True)
+        return self.connect(m,db_name='Consensus_Reporting',df_flag=False)
 
-    def connect(self,m,db_name='consensus',proc=False):
-        self.connection = pymysql.connect(host='localhost',
-                                 port=3306,
-                                 user=secret().getUser(),
-                                 password=secret().getSecret(),
-                                 db=db_name,
-                                 charset='utf8mb4',
-                                 cursorclass=pymysql.cursors.DictCursor)
+    def connect(self,sql_str,db_name,df_flag=True):
+        '''sql_str: query text to be sent to db
+        db_name: str of the database query is sent to
+        df_flag: Boolean to return an pandas dataframe or not'''
+        connector = dbconnect.DatabaseConnect(db_name)
         try:
-            if proc == True:
-                with self.connection.cursor() as cursor:
-                    cursor.execute(m)
-                    alliDF = None
-            elif proc == False:
-                alliDF = pd.read_sql(m,con=self.connection )
+            if df_flag == False:
+                connector.query(sql_str,df_flag=False)
+                alliDF = "'{}' successfully ran".format(sql_str)
+            elif df_flag == True:
+                alliDF = connector.query(sql_str,df_flag=True)
         finally:
             self.alertsound()
-            self.connection.close()
         return alliDF
