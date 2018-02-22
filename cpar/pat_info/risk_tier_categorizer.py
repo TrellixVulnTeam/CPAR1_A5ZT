@@ -5,7 +5,7 @@ import numpy as np
 from datetime import timedelta, date
 from dbconnect import dbconnect
 
-release_num = 3020
+release_num = input("Enter in release num: ")
 connector = dbconnect.DatabaseConnect('CHECK_CPAR2')
 
 max_date = connector.query('''SELECT HFS_Release_Date FROM release_info where ReleaseNum = {}'''.format(release_num))
