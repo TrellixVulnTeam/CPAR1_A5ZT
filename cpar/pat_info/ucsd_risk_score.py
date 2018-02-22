@@ -8,7 +8,7 @@ from dbconnect import dbconnect
 
 connector = dbconnect.DatabaseConnect('CHECK_CPAR2')
 
-file1=open("C:/Work/risk_codes/cdpsfmt1.child.txt","r")
+file1=open("ucsd_files/cdpsfmt1.child.txt","r")
 d1 = {}
 for line in file1:
     x1      = line.split("=")
@@ -16,14 +16,14 @@ for line in file1:
     value   = x1[1].strip(';\n\r')
     d1[key] = value.strip("'")
 
-fd=open("C:/Work/risk_codes/codes.txt","r")
+fd=open("ucsd_files/codes.txt","r")
 codeSet = {}
 i = 0
 for line in fd:
     codeSet[i] = line.split()
     i += 1
 
-file3=open("C:/Work/risk_codes/cdps_dadc.txt","r")
+file3=open("ucsd_files/cdps_dadc.txt","r")
 d4 = {}
 for line in file3:
     x1      = line.split("=")
@@ -159,7 +159,7 @@ while info:
         break
 
 
-demo_df = connector.query('''select RecipientID, Gender, DOB, TIMESTAMPDIFF(YEAR, DOB, '2017-11-28') as Age from pat_info_demo;''')
+demo_df = connector.query('''select RecipientID, Gender, Age from pat_info_demo;''')
 
 risk_raw_df = pd.merge(risk_raw_df, demo_df, on = 'RecipientID', how='left')
 
@@ -172,7 +172,7 @@ risk_raw_df.loc[((risk_raw_df['Age'] >= 15) & (risk_raw_df['Age'] < 25)  & (risk
 risk_raw_df.loc[((risk_raw_df['Age'] >= 25) & (risk_raw_df['Gender'] == 'Male')),'RiskScore'] = risk_raw_df['Risk'] - 0.068 + 0.226
 risk_raw_df.loc[((risk_raw_df['Age'] >= 25) & (risk_raw_df['Gender'] == 'Female')),'RiskScore'] = risk_raw_df['Risk'] + 0.041 + 0.226
 
-risk_raw_df = risk_raw_df.drop(['Gender','DOB','Age'], axis=1)
+risk_raw_df = risk_raw_df.drop(['Gender','Age'], axis=1)
 
 connector.query('''create table tbl_temp_risk_scores(RecipientID char(9) not null,
 Risk decimal(12,4), RiskScore decimal(12,4));''',df_flag=False)
