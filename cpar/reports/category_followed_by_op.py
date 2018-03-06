@@ -27,7 +27,7 @@ mc_df = connector.query("""select RecipientID, Category3 as 'OPCategory', Provid
                             Category3 = 'HOME_VISIT' OR
                             Category3 = 'OUTPATIENT_CONSULT';""")
 
-def final_report(cat_df, mc_df, category,relnum):
+def final_report(cat_df, mc_df, category, relnum):
 
     op_ip_fil_df = pd.merge(cat_df, mc_df, on='RecipientID', how='left')
     op_ip_fil_df = op_ip_fil_df.loc[op_ip_fil_df['EarliestServiceFromDt']>op_ip_fil_df['DischargeDt']]
@@ -128,7 +128,7 @@ for keys in categories.keys():
         i.AdjudicatedDt = m.AdjudicatedDt AND
         i.DischargeDt<>'0000-00-00'  AND
         {} AND
-      {} AND
+        {} AND
         {} AND
         re.RecipientID = m.RecipientID AND
         re.Engagement_Date is not null;""".format(categories[keys][1],categories[keys][2],categories[keys][0]))
