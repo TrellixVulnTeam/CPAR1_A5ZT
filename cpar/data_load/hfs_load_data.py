@@ -1,14 +1,12 @@
 import os
-
-curdir = './'
-ls = os.listdir(curdir)
-print(os.getcwd())
-cccd_dir = ["{}{}".format(curdir,i) for i in ls if i.endswith('CCCDMonthlyUICheck')]
-
-table_files = os.listdir('{}{}'.format(curdir,cccd_dir[0]))
+from datetime import datetime
+from dbconnect import dbconnect
 
 
-info_dict = {'path': cccd_dir[0],
+file_paths = './output_data'
+ls = os.listdir(file_paths)
+
+info_dict = {'path': file_paths,
              'adjustment':'adjustedclaimextractuick1.out',
              'main_claims':'claim_finaluick1.out',
              'nips':'servicenips_finaluick1.out',
@@ -23,15 +21,85 @@ info_dict = {'path': cccd_dir[0],
              'lead':'lead_finaluick1.out',
              'ending':'\n\n'}
 
-info_dict['DataSource'] = input('Who is the data source (HFS): ')
-info_dict['ReleaseNum'] = input('ReleaseNum: ')
-info_dict['Cumulative_ReleaseNum'] = info_dict['ReleaseNum'][2:]
-info_dict['db'] = input('Which Database (CPAR2): ')
-# info_dict['DataSource'] = 'HFS'
-# info_dict['ReleaseNum'] = 3020
-# info_dict['Cumulative_ReleaseNum'] = 20
-# info_dict['db'] = 'CPAR2'
+info_dict['load_date'] = '{:%Y-%m-%d}'.format(datetime.today())
 
+yes_no = False
+while yes_no != True:
+    yes_no = input('Is HFS the Data Source (Y/N)? ')
+    if yes_no == 'Y':
+        info_dict['DataSource'] = 'HFS'
+        yes_no = True
+    elif yes_no == 'N':
+        print('\n\nWarning!! Your probably wrong!!\n\n')
+        data_source = input('Enter data source: ')
+        verify = input("Is '{}' the correct Data Source (Y/N)? ".format(data_source))
+        if verify == 'Y':
+            info_dict['DataSource'] = data_source
+            yes_no = True
+        else:
+            continue
+    else:
+        print('Improper input try again')
+
+print()
+
+yes_no = False
+while yes_no != True:
+    yes_no = input('Is the Database CHECK_CPAR2 (Y/N)? ')
+    if yes_no == 'Y':
+        info_dict['db'] = 'CHECK_CPAR2'
+        yes_no = True
+    elif yes_no == 'N':
+        db_name = input('Enter DB Name: ')
+        verify = input("Is '{}' the correct DB (Y/N)? ".format(db_name))
+        if verify == 'Y':
+            info_dict['db'] = db_name
+            yes_no = True
+        else:
+            continue
+    else:
+        print('Improper input try again')
+
+connection = dbconnect.DatabaseConnect(info_dict['db'])
+#gets last inserts release and adds one
+current_releasenum = connection.query('SELECT MAX(ReleaseNum) from tum_hfs_load_count_info').values[0][0] + 1
+
+print()
+
+yes_no = False
+while yes_no != True:
+    yes_no = input('Is {} the correct Release Number  (Y/N)? '.format(current_releasenum))
+    if yes_no == 'Y':
+        info_dict['ReleaseNum'] = str(current_releasenum)
+        info_dict['Cumulative_ReleaseNum'] = info_dict['ReleaseNum'][2:]
+        yes_no = True
+    elif yes_no == 'N':
+        print('\n\nWarning!! Your probably wrong!!\n\n')
+        input_release = input('Enter ReleaseNum: ')
+        assert int(input_release) != ValueError
+        verify = input("Is'{}' the correct Release Number (Y/N)? ".format(input_release))
+        if verify == 'Y':
+            info_dict['ReleaseNum'] = input_release
+            info_dict['Cumulative_ReleaseNum'] = info_dict['ReleaseNum'][2:]
+            yes_no = True
+        else:
+            continue
+    else:
+        print('Improper input try again')
+
+
+
+def renew_script(file_name, start_string=None):
+    '''Rewrites a file if it exists and will add a header to the file with start_string'''
+    try:
+        os.remove(file_name)
+    except:
+        pass
+    finally:
+        if start_string != None:
+            text_file = open(file_name, "a")
+            text_file.write(start_string)
+            text_file.close()
 
 adjustment_table = """LOAD DATA LOCAL INFILE '{path}/{adjustment}'
 INTO TABLE {db}.trc_hfs_adjustments
@@ -306,15 +374,41 @@ sql_str_list = [adjustment_table, main_claims_table, nips_table,
                 revenue_table, compound_drug_table, immunization_table,
                 diagnosis_table, institutional_table, lead_table]
 
+mysql_script_name = 'Load_Data_to_DB_ReleaseNum_{ReleaseNum}.sql'.format(**info_dict)
 
-mysql_script_name = 'Load_data_to_DB_ReleaseNum_{ReleaseNum}.sql'.format(**info_dict)
-
-try:
-    os.remove(mysql_script_name)
-except OSError:
-    pass
+renew_script(mysql_script_name)
 
 for i in sql_str_list:
     text_file = open(mysql_script_name, "a")
     text_file.write(i)
     text_file.close()
+
+
+#writes sql script that puts load information into table
+insert_info_script_name = 'Load_info_{ReleaseNum}.sql'.format(**info_dict)
+delete_info_script_name = 'Delete_Release_Info_{ReleaseNum}.sql'.format(**info_dict)
+
+renew_script(insert_info_script_name,"USE {db};\n".format(**info_dict))
+renew_script(delete_info_script_name,"USE {db};\n".format(**info_dict))
+
+
+db_tables = ['tsc_hfs_adjustments', 'tsc_hfs_diagnosis', 'tsc_hfs_institutional', 'tsc_hfs_main_claims',
+             'tsc_hfs_main_claims_new', 'tsc_hfs_nips', 'tsc_hfs_pharmacy', 'tsc_hfs_procedure', 'tsc_hfs_revenue_codes']
+
+
+for table in db_tables:
+    insert_str = """INSERT INTO tum_hfs_load_count_info(tablename, releasenum,
+    cumreleasenum, loaddate, count) select '{table}' as tablename, {ReleaseNum} as releasenum,
+    {Cumulative_ReleaseNum} as cumreleasenum, '{load_date}' as loaddate,
+    (select count(*) from trc_hfs_adjustments
+    where cumreleasenum  = {Cumulative_ReleaseNum}) as count;\n\n""".format(table=table,**info_dict)
+
+    delete_str = """DELETE FROM {table} WHERE datasource = '{DataSource}' AND releasenum = {ReleaseNum};\n""".format(table=table,**info_dict)
+
+    insert_text_file = open(insert_info_script_name, "a")
+    insert_text_file.write(insert_str)
+    insert_text_file.close()
+
+    delete_text_file = open(delete_info_script_name, "a")
+    delete_text_file.write(delete_str)
+    delete_text_file.close()

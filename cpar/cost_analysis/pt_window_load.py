@@ -8,8 +8,7 @@ connector = dbconnect.DatabaseConnect('CHECK_CPAR2')
 # Date when first bills came in from HFS
 check_start_date = '2014-05-01'
 # Pulls patients in most recent ReleaseNum
-pt_df = connector.query("""SELECT RecipientID,
-                           Program_Date,
+pt_df = connector.query("""SELECT RecipientID,Program_Date,
                            pic.ReleaseNum,
                            '{}' as CHECK_Start_Date,
                            ri.HFS_Release_Date

@@ -2,7 +2,7 @@
 import pandas as pd
 import numpy as np
 import sqlalchemy
-from dbconnect import dbconnect
+from CHECK.dbconnect import dbconnect
 
 connector = dbconnect.DatabaseConnect('CHECK_CPAR2')
 
