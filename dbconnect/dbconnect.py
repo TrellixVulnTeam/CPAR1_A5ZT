@@ -1,7 +1,7 @@
 import configparser
 from sqlalchemy import create_engine
 import pandas as pd
-from secret import secret
+from CHECK.secret import secret
 
 class DatabaseConnect():
     def __init__(self,database):

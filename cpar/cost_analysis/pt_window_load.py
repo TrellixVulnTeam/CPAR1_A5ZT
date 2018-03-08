@@ -2,7 +2,7 @@
 import math
 import numpy as np
 import pandas as pd
-from dbconnect import dbconnect
+from CHECK.dbconnect import dbconnect
 
 connector = dbconnect.DatabaseConnect('CHECK_CPAR2')
 # Date when first bills came in from HFS

@@ -4,9 +4,9 @@ import numpy as np
 import pandas as pd
 import winsound
 import time
-from helpers import PhoneMapHelper
-from helpers import contactHelper
-from dbconnect import dbconnect
+from CHECK.helpers import PhoneMapHelper
+from CHECK.helpers import contactHelper
+from CHECK.dbconnect import dbconnect
 
 class ConsensusConnect():
 

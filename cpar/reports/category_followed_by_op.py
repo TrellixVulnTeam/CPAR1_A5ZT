@@ -1,10 +1,9 @@
-import pymysql
+
 import pandas as pd
 import sys
 import configparser
 import itertools
 import numpy as np
-
 from dbconnect import dbconnect
 
 connector = dbconnect.DatabaseConnect('CHECK_CPAR2')
@@ -136,5 +135,3 @@ for keys in categories.keys():
     final_report_df = final_report(query_df, mc_df, keys, relnum)
 
     connector.insert(final_report_df,'rpt_hospitalization_category_op')
-
-    final_report_df.to_csv("./Report_Output/{}_followed_by_OP.csv".format(keys),index=False)

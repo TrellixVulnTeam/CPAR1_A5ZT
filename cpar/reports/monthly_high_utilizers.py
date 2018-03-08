@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from dbconnect import dbconnect
+from CHECK.dbconnect import dbconnect
 
 def mc_pivot(mc_df, columns, values, margins_name):
     '''pivots data to get sums of column values and renames heirrchial columns'''

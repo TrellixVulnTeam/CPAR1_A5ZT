@@ -1,7 +1,7 @@
 import os
 import paramiko
 from pprint import pprint
-from secret.secret import secret
+from CHECK.secret.secret import secret
 
 class SFTPConnect:
 

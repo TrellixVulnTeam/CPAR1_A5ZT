@@ -1,6 +1,6 @@
 import pandas as pd
-from quarterly_report import tier_scores
-from conconnect.conconnect import ConsensusConnect
+from CHECK.quarterly_report import tier_scores
+from CHECK.conconnect.conconnect import ConsensusConnect
 import datetime
 
 class AutoScore():

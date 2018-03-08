@@ -1,10 +1,9 @@
-import pymysql
 import pandas as pd
 import sys
 import configparser
 import itertools
 import numpy as np
-from dbconnect import dbconnect
+from CHECK.dbconnect import dbconnect
 
 connector = dbconnect.DatabaseConnect('CHECK_CPAR2')
 

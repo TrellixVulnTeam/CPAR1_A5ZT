@@ -2,9 +2,8 @@ import datetime
 import numpy as np
 import pandas as pd
 from collections import OrderedDict
-from conconnect import toSQL
-from conconnect import ConsensusConnect
-from helpers import PhoneMapHelper
+from CHECK.conconnect import ConsensusConnect
+from CHECK.helpers import PhoneMapHelper
 
 
 query = ConsensusConnect.ConsensusConnect()

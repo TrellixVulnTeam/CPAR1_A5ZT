@@ -2,8 +2,8 @@
 import itertools
 import numpy as np
 import pandas as pd
-from dbconnect import dbconnect
-from conconnect import conconnect
+from CHECK.dbconnect import dbconnect
+from CHECK.conconnect import conconnect
 
 def pp_total_cost_query(unique_recipientID, connector):
     '''unique_recipientID: pd.Series of RecipientIDs

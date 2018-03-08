@@ -1,9 +1,8 @@
 
-import pymysql
 import pandas as pd
 import numpy as np
 from datetime import timedelta, date
-from dbconnect import dbconnect
+from CHECK.dbconnect import dbconnect
 
 
 connector = dbconnect.DatabaseConnect('CHECK_CPAR2')

@@ -2,9 +2,9 @@ import datetime
 import os
 import shutil
 import pandas as pd
-from conconnect import conconnect
-from helpers import reportHelper
-from helpers import contactHelper
+from CHECK.conconnect import conconnect
+from CHECK.helpers import reportHelper
+from CHECK.helpers import contactHelper
 
 class monthlyReports():
 
