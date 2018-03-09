@@ -36,7 +36,7 @@ for tables in load_valid_dict:
     if(tables_count_dict[tables] != files_count_dict[tables]):
         not_match.append(tables)
 
-if len(not_match) == 0:
+if not not_match:
     print("The row count in tables and files match")
 else:
     print("The row count in following tables do not match with the files")
