@@ -15,7 +15,7 @@ info_dict = {'path': file_paths,
              'recipient_flags':'recipientflags_final_uick1.out',
              'revenue':'servicerev_finaluick1.out',
              'compound_drug':'servicepharmndc_finaluick1.out',
-             'immunization':'icare_finaluick1.out',
+             'immunization':'cornerstone_finaluick1.out',
              'diagnosis':'servicediag_finaluick1.out',
              'institutional':'serviceinst_finaluick1.out',
              'lead':'lead_finaluick1.out',
@@ -62,7 +62,7 @@ while yes_no != True:
 
 connection = dbconnect.DatabaseConnect(info_dict['db'])
 #gets last inserts release and adds one
-current_releasenum = connection.query('SELECT MAX(ReleaseNum) from tum_hfs_load_count_info').values[0][0] + 1
+current_releasenum = connection.query('SELECT MAX(ReleaseNum) from pat_info_demo').values[0][0] + 1
 
 print()
 
