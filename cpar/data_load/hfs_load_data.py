@@ -3,7 +3,7 @@ from datetime import datetime
 from CHECK.dbconnect import dbconnect
 
 
-class HfsLoadData(object):
+class HFSLoadData(object):
     info_dict = {}
 
     def __init__(self,database,release_num,source):
@@ -57,6 +57,9 @@ class HfsLoadData(object):
                 text_file.close()
 
     def load_data(self):
+        '''Writes 3 sql scripts: An insert script, a delete script that removes the load from the raw tables
+        and an insert which records the numbers of rows into the  hfs_load_count_info table
+         The sql commands are stored in the dictionary and can be queried when the file_loader method is called'''
 
         self.load_inline_dict['adjustment_table'] = {'inline_load':"""LOAD DATA LOCAL INFILE '{path}/{adjustment}'
         INTO TABLE {db}.trc_hfs_adjustments
@@ -362,25 +365,25 @@ class HfsLoadData(object):
 
             table = self.load_inline_dict[key]['table_name']
 
-            insert_str = """INSERT INTO tum_hfs_load_count_info(tablename, releasenum,cumreleasenum, loaddate, count) select '{table}' as tablename, {ReleaseNum} as releasenum,
-            {Cumulative_ReleaseNum} as cumreleasenum, '{load_date}' as loaddate,(select count(*) from {table}
-            where cumreleasenum  = {Cumulative_ReleaseNum}) as count;\n\n""".format(table=table,**self.info_dict)
+            insert_str = """INSERT INTO hfs_load_count_info(Table_Name, ReleaseNum, Cumulative_ReleaseNum, Load_Date, Count) select '{table}' as Table_Name, {ReleaseNum} as ReleaseNum,
+            {Cumulative_ReleaseNum} as Cumulative_ReleaseNum, '{load_date}' as Load_Date,(select count(*) from {table}
+            where CumReleaseNum  = {Cumulative_ReleaseNum}) as Count;\n\n""".format(table=table,**self.info_dict)
 
             delete_str = """DELETE FROM {table} WHERE datasource = '{DataSource}' AND releasenum = {ReleaseNum};\n""".format(table=table,**self.info_dict)
 
             self.load_inline_dict[key]['sql_insert'] = insert_str
             self.load_inline_dict[key]['sql_delete'] = delete_str
 
-            self.line_append(mysql_script_name,self.load_inline_dict[key]['inline_load'])
+            self.line_append(mysql_script_name, self.load_inline_dict[key]['inline_load'])
             self.line_append(insert_info_script_name, insert_str)
             self.line_append(delete_info_script_name, delete_str)
 
 
     def line_append(self,script_name,str_append):
+        '''adds line without having to perform open close over and over'''
         text_file = open(script_name, "a")
         text_file.write(str_append)
         text_file.close()
-
 
     def inline_loader(self):
         '''loads data inline to raw tables and catalogs rows counts into hfs_load_count_info'''
@@ -399,15 +402,16 @@ class HfsLoadData(object):
                 counter += 1
                 print('{}: Load completed correctly n={}'.format(table, load_info_tuple[0]))
                 # Because we have row counts from the query we can perform the insert into hfs_load_count_info
-                # faster with the following query
-                insert_str = """INSERT INTO tum_hfs_load_count_info(tablename, releasenum,cumreleasenum, loaddate, count)
-                select '{table}' as tablename, {ReleaseNum} as releasenum, {Cumulative_ReleaseNum} as cumreleasenum,
-                '{load_date}' as loaddate, {row_count} as count;""".format(table=table,row_count=load_info_tuple[0],
+                # faster with the following query, over writes the other sql_insert query
+                self.load_inline_dict[key]['sql_insert'] = """INSERT INTO hfs_load_count_info(tablename, releasenum,cumreleasenum, loaddate, count)
+                select '{table}' as Table_Name, {ReleaseNum} as ReleaseNum, {Cumulative_ReleaseNum} as Cumulative_ReleaseNum,
+                '{load_date}' as Load_Date, {row_count} as Count;""".format(table=table,row_count=load_info_tuple[0],
                                                                            **self.info_dict)
-                self.connection.query(insert_str,df_flag=False)
-
         if counter == table_count:
             print('\nAll tables loaded into raw tables correctly\n')
+            print('Inserting load information into hfs_load_count_info')
+            for key in self.load_inline_dict.keys():
+                self.connection.query(self.load_inline_dict[key]['sql_insert'],df_flag=False)
         else:
             print('ERROR: Not all tables loaded correctly look at log!')
 
@@ -415,12 +419,12 @@ class HfsLoadData(object):
         '''table_key: (str) deletes rows with associated table_key. When set to 'All'
            deletes all rows that were inserted into tables and hfs_load_count_info'''
         if table_key == 'All':
-            for i in self.load_inline_dict.keys():
-                self.connection.query(self.load_inline_dict[i]['sql_delete'],df_flag=False)
-                print('Deleting rows from {}'.format(self.load_inline_dict[i]['table_name']))
+            for key in self.load_inline_dict.keys():
+                self.connection.query(self.load_inline_dict[key]['sql_delete'],df_flag=False)
+                print('Deleting rows from {}'.format(self.load_inline_dict[key]['table_name']))
 
-            self.connection.query("""DELETE FROM {db}.tum_hfs_load_count_info
-            where releasenum = {ReleaseNum}""".format(**self.info_dict),df_flag=False)
+            self.connection.query("""DELETE FROM {db}.hfs_load_count_info
+            where ReleaseNum = {ReleaseNum}""".format(**self.info_dict),df_flag=False)
         else:
             self.connection.query(self.load_inline_dict[table_key]['sql_delete'],df_flag=False)
             print('Deleted rows from {}'.format(self.load_inline_dict[table_key]['table_name']))
