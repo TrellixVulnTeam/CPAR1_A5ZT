@@ -35,7 +35,7 @@ class monthlyReports():
         date = datetime.date.today()
         my_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
         month = my_date.strftime("%b")
-        file_name = "ACT_{}_Report_".format(month)
+        file_name = "ACT_{}_Report".format(month)
         self.printFileOutput(trun_act_df,file_name)
 
     def activeEngagedBCBS(self):
@@ -51,7 +51,7 @@ class monthlyReports():
         bcbs_pats = bcbs_pats[['PatientID','RecipientID','First_Name','Last_Name',
                                'Gender','DOB','Current_Enrollment_Status']]
 
-        self.printFileOutput(bcbs_redcap,"Active_Engaged_BCBS_Report")
+        self.printFileOutput(bcbs_pats,"Active_Engaged_BCBS_Report")
 
     def enrolledNotEngaged(self):
         '''Redone'''
@@ -78,7 +78,6 @@ class monthlyReports():
 
         demography = self.dataHolder('demography')
         pat_care_team = self.dataHolder('patCareTeam')
-
         demography['Risk'] = demography['Consensus_Risk']
 
         contact = self.connection.contact()
@@ -87,24 +86,24 @@ class monthlyReports():
         contact_group_piv = contactHelper.pivotRecentContact(contact)
         contact_group_piv.reset_index(inplace=True)
         contact_group_piv.sort_values('PatientID',inplace=True)
-        active_engaged_demo = demography.loc[(demography['Status']=='Active')]
+        active_engaged_demo = demography.loc[(demography['Current_Enrollment_Status']=='Active')].copy()
 
-        active_engaged_demo = active_engaged_demo[['PatientID','Patient_Type','EngagementDate','Risk']]
+        active_engaged_demo = active_engaged_demo[['PatientID','Group','Engagement_Date','Risk']]
         active_engaged_contact_demo = pd.merge(active_engaged_demo,contact_group_piv,on='PatientID',how='left')
-        active_engaged_contact_demo = pd.merge(active_engaged_contact_demo,demography[['PatientID','RIN']],on='PatientID',how='left')
+        active_engaged_contact_demo = pd.merge(active_engaged_contact_demo,demography[['PatientID','RecipientID']],on='PatientID',how='left')
 
-        careplan_mapping = pd.merge(active_engaged_contact_demo,careplan,on=['PatientID','RIN'],how='left')
+        careplan_mapping = pd.merge(active_engaged_contact_demo,careplan,on=['PatientID'],how='left')
         careplan_mapping = pd.merge(careplan_mapping,chw_mapping,how='left')
 
         engaged_no_careplan = careplan_mapping.loc[(careplan_mapping['StartDate'].isnull())&
-                                                   (careplan_mapping['Patient_Type']=='Engaged')]
+                                                   (careplan_mapping['Group']=='Engaged')]
 
         engaged_careplan = careplan_mapping.loc[(~careplan_mapping['StartDate'].isnull())&
-                                                (careplan_mapping['Patient_Type']=='Engaged')]
+                                                (careplan_mapping['Group']=='Engaged')]
 
         engaged_no_careplan = pd.merge(engaged_no_careplan,pat_care_team,on='PatientID',how='left')
         engaged_careplan = pd.merge(engaged_careplan,pat_care_team,on='PatientID',how='left')
-        engaged_no_careplan = engaged_no_careplan[['PatientID','RIN','Patient_Type','EngagementDate',
+        engaged_no_careplan = engaged_no_careplan[['PatientID','RecipientID','Group','Engagement_Date',
                                                    'Risk','NetID','ConsensusUsername','FirstName','AssignedTo']]
 
         engaged_no_careplan['AssignedTo'] = engaged_no_careplan['AssignedTo'].fillna('Unassigned')
