@@ -327,7 +327,7 @@ class ConsensusConnect():
         m = 'CALL act_scores();'
         return self.connect(m,db_name='Consensus_Reporting',df_flag=False)
 
-    def connect(self,sql_str,db_name,df_flag=True):
+    def connect(self,sql_str,db_name,df_flag=True,parse_dates=None):
         '''sql_str: query text to be sent to db
         db_name: str of the database query is sent to
         df_flag: Boolean to return an pandas dataframe or not'''
@@ -337,7 +337,7 @@ class ConsensusConnect():
                 connector.query(sql_str,df_flag=False)
                 alliDF = "'{}' successfully ran".format(sql_str)
             elif df_flag == True:
-                alliDF = connector.query(sql_str,df_flag=True)
+                alliDF = connector.query(sql_str,df_flag=True,parse_dates=parse_dates)
         finally:
             self.alertsound()
         return alliDF
