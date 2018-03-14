@@ -403,7 +403,7 @@ class HFSLoadData(object):
                 print('{}: Load completed correctly n={}'.format(table, load_info_tuple[0]))
                 # Because we have row counts from the query we can perform the insert into hfs_load_count_info
                 # faster with the following query, over writes the other sql_insert query
-                self.load_inline_dict[key]['sql_insert'] = """INSERT INTO hfs_load_count_info(tablename, releasenum,cumreleasenum, loaddate, count)
+                self.load_inline_dict[key]['sql_insert'] = """INSERT INTO hfs_load_count_info(Table_Name, ReleaseNum,Cumulative_ReleaseNum, Load_Date, Count)
                 select '{table}' as Table_Name, {ReleaseNum} as ReleaseNum, {Cumulative_ReleaseNum} as Cumulative_ReleaseNum,
                 '{load_date}' as Load_Date, {row_count} as Count;""".format(table=table,row_count=load_info_tuple[0],
                                                                            **self.info_dict)
