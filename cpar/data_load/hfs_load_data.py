@@ -29,7 +29,7 @@ class HFSLoadData(object):
         self.info_dict['load_date'] = '{:%Y-%m-%d}'.format(datetime.today())
         self.info_dict['DataSource'] = source
         self.info_dict['db'] = database
-        self.info_dict['ReleaseNum'] = release_num
+        self.info_dict['ReleaseNum'] = str(release_num)
         self.info_dict['Cumulative_ReleaseNum'] = self.info_dict['ReleaseNum'][2:]
 
         self.load_inline_dict = {}
@@ -38,11 +38,6 @@ class HFSLoadData(object):
             os.mkdir('sql_scripts')
 
         self.connection = dbconnect.DatabaseConnect(self.info_dict['db'])
-        # # gets last inserts release and adds one
-#         current_releasenum = connection.query('SELECT MAX(ReleaseNum) from pat_info_demo').values[0][0]
-#         self.info_dict['ReleaseNum'] = str(current_releasenum)
-
-
 
     def renew_script(self,file_name, start_string=None):
         '''Rewrites a file if it exists and will add a header to the file with start_string'''
