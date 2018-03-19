@@ -4,62 +4,68 @@ from CHECK.dbconnect import dbconnect
 
 
 class HFSLoadData(object):
-    info_dict = {}
 
-    def __init__(self,database,release_num,source):
-
+    def __init__(self, database, release_num, source):
+        print('Loading data from files...')
         file_paths = os.getcwd() + '/output_data'
-        file_paths = file_paths.replace('\\','/')
+        file_paths = file_paths.replace('\\', '/')
 
         self.info_dict = {'path': file_paths,
-                         'adjustment': 'adjustedclaimextractuick1.out',
-                         'main_claims': 'claim_finaluick1.out',
-                         'nips': 'servicenips_finaluick1.out',
-                         'pharmacy': 'pharmacy_finaluick1.out',
-                         'procedure': 'serviceproc_finaluick1.out',
-                         'recipient_flags': 'recipientflags_final_uick1.out',
-                         'revenue': 'servicerev_finaluick1.out',
-                         'compound_drug': 'servicepharmndc_finaluick1.out',
-                         'immunization': 'cornerstone_finaluick1.out',
-                         'diagnosis': 'servicediag_finaluick1.out',
-                         'institutional': 'serviceinst_finaluick1.out',
-                         'lead': 'lead_finaluick1.out',
-                         'ending': '\n\n'}
+                          'adjustment': 'adjustedclaimextractuick1.out',
+                          'main_claims': 'claim_finaluick1.out',
+                          'nips': 'servicenips_finaluick1.out',
+                          'pharmacy': 'pharmacy_finaluick1.out',
+                          'procedure': 'serviceproc_finaluick1.out',
+                          'recipient_flags': 'recipientflags_final_uick1.out',
+                          'revenue': 'servicerev_finaluick1.out',
+                          'compound_drug': 'servicepharmndc_finaluick1.out',
+                          'immunization': 'cornerstone_finaluick1.out',
+                          'diagnosis': 'servicediag_finaluick1.out',
+                          'institutional': 'serviceinst_finaluick1.out',
+                          'lead': 'lead_finaluick1.out',
+                          'ending': '\n\n'}
 
         self.info_dict['load_date'] = '{:%Y-%m-%d}'.format(datetime.today())
         self.info_dict['DataSource'] = source
         self.info_dict['db'] = database
         self.info_dict['ReleaseNum'] = str(release_num)
         self.info_dict['Cumulative_ReleaseNum'] = self.info_dict['ReleaseNum'][2:]
-
         self.load_inline_dict = {}
 
         if 'sql_scripts' not in os.listdir():
             os.mkdir('sql_scripts')
 
         self.connection = dbconnect.DatabaseConnect(self.info_dict['db'])
+        # gets last inserts release and adds one
+        # current_releasenum = connection.query('SELECT MAX(ReleaseNum)
+        # from pat_info_demo').values[0][0]
+        # self.info_dict['ReleaseNum'] = str(current_releasenum)
 
-    def renew_script(self,file_name, start_string=None):
-        '''Rewrites a file if it exists and will add a header to the file with start_string'''
+    def renew_script(self, file_name, start_string=None):
+        '''Rewrites a file if it exists and will add a
+            header to the file with start_string'''
         try:
             os.remove(file_name)
         except:
             pass
         finally:
-            if start_string != None:
+            if start_string is not None:
                 text_file = open(file_name, "a")
                 text_file.write(start_string)
                 text_file.close()
 
     def load_data(self):
-        '''Writes 3 sql scripts: An insert script, a delete script that removes the load from the raw tables
-        and an insert which records the numbers of rows into the  hfs_load_count_info table
-         The sql commands are stored in the dictionary and can be queried when the file_loader method is called'''
+        '''Writes 3 sql scripts: An insert script, a delete script that
+           removes the load from the raw tables and an insert which records the
+           numbers of rows into the  hfs_load_count_info table
+           The sql commands are stored in the dictionary and can be queried
+           when the file_loader method is called'''
 
-        self.load_inline_dict['adjustment_table'] = {'inline_load':"""LOAD DATA LOCAL INFILE '{path}/{adjustment}'
-        INTO TABLE {db}.trc_hfs_adjustments
-        (@row)
-        SET
+        self.load_inline_dict['adjustment_table'] = {'inline_load':
+        """LOAD DATA LOCAL INFILE '{path}/{adjustment}'
+          INTO TABLE {db}.trc_hfs_adjustments
+          (@row)
+          SET
             DCN = TRIM(SUBSTR(@row,1,15)),
             ServiceLineNbr = TRIM(SUBSTR(@row,16,2)),
             RecipientID = TRIM(SUBSTR(@row,18,9)),
@@ -69,14 +75,16 @@ class HFSLoadData(object):
             VoidInd = TRIM(SUBSTR(@row,59,1)),
             DataSource = '{DataSource}',
             ReleaseNum = {ReleaseNum},
-            CumReleaseNum = {Cumulative_ReleaseNum};{ending}""".format(**self.info_dict),
-            'file_path':'{path}/{adjustment}'.format(**self.info_dict),
-            'table_name':'trc_hfs_adjustments'}
+            CumReleaseNum = {Cumulative_ReleaseNum};{ending}"""
+            .format(**self.info_dict),
+            'file_path': '{path}/{adjustment}'.format(**self.info_dict),
+            'table_name': 'trc_hfs_adjustments'}
 
-        self.load_inline_dict['main_claims_table'] = {'inline_load':"""LOAD DATA LOCAL INFILE '{path}/{main_claims}'
-        INTO TABLE {db}.trc_hfs_main_claims
-        (@row)
-        SET
+        self.load_inline_dict['main_claims_table'] = {'inline_load':
+        """LOAD DATA LOCAL INFILE '{path}/{main_claims}'
+          INTO TABLE {db}.trc_hfs_main_claims
+          (@row)
+          SET
             DCN = TRIM(SUBSTR(@row,1,15)),
             ServiceLineNbr = TRIM(SUBSTR(@row,16,2)),
             RejectionStatusCd = TRIM(SUBSTR(@row,18,1)),
@@ -101,28 +109,32 @@ class HFSLoadData(object):
             CopayAmt = nullif(TRIM(SUBSTR(@row,160,11)),''),
             DataSource = '{DataSource}',
             ReleaseNum = {ReleaseNum},
-            CumReleaseNum = {Cumulative_ReleaseNum};{ending}""".format(**self.info_dict),
-            'file_path':'{path}/{main_claims}'.format(**self.info_dict),
-            'table_name':'trc_hfs_main_claims'}
+            CumReleaseNum = {Cumulative_ReleaseNum};{ending}"""
+            .format(**self.info_dict),
+            'file_path': '{path}/{main_claims}'.format(**self.info_dict),
+            'table_name': 'trc_hfs_main_claims'}
 
-        self.load_inline_dict['immunization_table'] = {'inline_load':"""LOAD DATA LOCAL INFILE '{path}/{immunization}'
-        INTO TABLE {db}.trc_hfs_cornerstone_immunization
-        (@row)
-        SET
+        self.load_inline_dict['immunization_table'] = {'inline_load':
+        """LOAD DATA LOCAL INFILE '{path}/{immunization}'
+          INTO TABLE {db}.trc_hfs_cornerstone_immunization
+          (@row)
+          SET
             RecipientID = TRIM(SUBSTR(@row,1,9)),
             ImmnDt = str_to_date(TRIM(SUBSTR(@row,10,10)), '%Y-%m-%d'),
             ImmnTyp = TRIM(SUBSTR(@row,20,4)),
             ImunzTypDesc = TRIM(SUBSTR(@row,24,40)),
             DataSource = '{DataSource}',
             ReleaseNum = {ReleaseNum},
-            CumReleaseNum = {Cumulative_ReleaseNum};{ending}""".format(**self.info_dict),
-            'file_path':'{path}/{immunization}'.format(**self.info_dict),
-            'table_name':'trc_hfs_cornerstone_immunization'}
+            CumReleaseNum = {Cumulative_ReleaseNum};{ending}"""
+            .format(**self.info_dict),
+            'file_path': '{path}/{immunization}'.format(**self.info_dict),
+            'table_name': 'trc_hfs_cornerstone_immunization'}
 
-        self.load_inline_dict['lead_table'] = {'inline_load':"""LOAD DATA LOCAL INFILE '{path}/{lead}'
-        INTO TABLE {db}.trc_hfs_lead
-        (@row)
-        SET
+        self.load_inline_dict['lead_table'] = {'inline_load':
+        """LOAD DATA LOCAL INFILE '{path}/{lead}'
+          INTO TABLE {db}.trc_hfs_lead
+          (@row)
+          SET
             RecipientID = TRIM(SUBSTR(@row,1,9)),
             LabNumber = TRIM(SUBSTR(@row,10,16)),
             CollectedDate = str_to_date(TRIM(SUBSTR(@row,26,10)), '%Y-%m-%d'),
@@ -133,14 +145,16 @@ class HFSLoadData(object):
             ConfirmDate = str_to_date(TRIM(SUBSTR(@row,53,10)), '%Y-%m-%d'),
             DataSource = '{DataSource}',
             ReleaseNum = {ReleaseNum},
-            CumReleaseNum = {Cumulative_ReleaseNum};{ending}""".format(**self.info_dict),
-            'file_path':'{path}/{lead}'.format(**self.info_dict),
-            'table_name':'trc_hfs_lead'}
+            CumReleaseNum = {Cumulative_ReleaseNum};{ending}"""
+            .format(**self.info_dict),
+            'file_path': '{path}/{lead}'.format(**self.info_dict),
+            'table_name': 'trc_hfs_lead'}
 
-        self.load_inline_dict['pharmacy_table'] = {'inline_load':"""LOAD DATA LOCAL INFILE '{path}/{pharmacy}'
-        INTO TABLE {db}.trc_hfs_pharmacy
-        (@row)
-        SET
+        self.load_inline_dict['pharmacy_table'] = {'inline_load':
+        """LOAD DATA LOCAL INFILE '{path}/{pharmacy}'
+          INTO TABLE {db}.trc_hfs_pharmacy
+          (@row)
+          SET
             DCN = TRIM(SUBSTR(@row,1,15)),
             ServiceLineNbr = TRIM(SUBSTR(@row,16,2)),
             RecipientID = TRIM(SUBSTR(@row,18,9)),
@@ -166,8 +180,8 @@ class HFSLoadData(object):
             RefillNbr = TRIM(SUBSTR(@row,160,2)),
             NbrRefillsAuth = nullif(TRIM(SUBSTR(@row,162,2)),''),
             DrugDAWCd = TRIM(SUBSTR(@row,164,1)),
-            PrescriptionDt = str_to_date(TRIM(SUBSTR(@row,165,10)), '%Y-%m-%d'),
-            PrescribingLastName = TRIM(SUBSTR(@row,175,15)),
+            PrescriptionDt = str_to_date(TRIM(SUBSTR(@row,165,10)), '%Y-%m-%d')
+            ,PrescribingLastName = TRIM(SUBSTR(@row,175,15)),
             LabelName = TRIM(SUBSTR(@row,190,30)),
             GenericCdNbr = TRIM(SUBSTR(@row,220,5)),
             DrugStrengthDesc = TRIM(SUBSTR(@row,225,10)),
@@ -178,26 +192,30 @@ class HFSLoadData(object):
             CopayAmt = nullif(TRIM(SUBSTR(@row,264,11)),''),
             DataSource = '{DataSource}',
             ReleaseNum = {ReleaseNum},
-            CumReleaseNum = {Cumulative_ReleaseNum};{ending}""".format(**self.info_dict),
-            'file_path':'{path}/{pharmacy}'.format(**self.info_dict),
-            'table_name':'trc_hfs_pharmacy'}
+            CumReleaseNum = {Cumulative_ReleaseNum};{ending}"""
+            .format(**self.info_dict),
+            'file_path': '{path}/{pharmacy}'.format(**self.info_dict),
+            'table_name': 'trc_hfs_pharmacy'}
 
-        self.load_inline_dict['recipient_flags_table'] = {'inline_load':"""LOAD DATA LOCAL INFILE '{path}/{recipient_flags}'
-        INTO TABLE {db}.trc_hfs_recipient_flags
-        (@row)
-        SET
+        self.load_inline_dict['recipient_flags_table'] = {'inline_load':
+        """LOAD DATA LOCAL INFILE '{path}/{recipient_flags}'
+          INTO TABLE {db}.trc_hfs_recipient_flags
+          (@row)
+          SET
             RecipientID = TRIM(SUBSTR(@row,1,9)),
             RecipientFlagCd = TRIM(SUBSTR(@row,10,2)),
             DataSource = '{DataSource}',
             ReleaseNum = {ReleaseNum},
-            CumReleaseNum = {Cumulative_ReleaseNum};{ending}""".format(**self.info_dict),
-            'file_path':'{path}/{recipient_flags}'.format(**self.info_dict),
-            'table_name':'trc_hfs_recipient_flags'}
+            CumReleaseNum = {Cumulative_ReleaseNum};{ending}"""
+            .format(**self.info_dict),
+            'file_path': '{path}/{recipient_flags}'.format(**self.info_dict),
+            'table_name': 'trc_hfs_recipient_flags'}
 
-        self.load_inline_dict['diagnosis_table'] = {'inline_load':"""LOAD DATA LOCAL INFILE '{path}/{diagnosis}'
-        INTO TABLE {db}.trc_hfs_diagnosis
-        (@row)
-        SET
+        self.load_inline_dict['diagnosis_table'] = {'inline_load':
+        """LOAD DATA LOCAL INFILE '{path}/{diagnosis}'
+          INTO TABLE {db}.trc_hfs_diagnosis
+          (@row)
+          SET
             DCN = TRIM(SUBSTR(@row,1,15)),
             ServiceLineNbr = TRIM(SUBSTR(@row,16,2)),
             RejectionStatusCd = TRIM(SUBSTR(@row,18,1)),
@@ -211,14 +229,16 @@ class HFSLoadData(object):
             ICDVersion = TRIM(SUBSTR(@row,50,2)),
             DataSource = '{DataSource}',
             ReleaseNum = {ReleaseNum},
-            CumReleaseNum = {Cumulative_ReleaseNum};{ending}""".format(**self.info_dict),
-            'file_path':'{path}/{diagnosis}'.format(**self.info_dict),
-            'table_name':'trc_hfs_diagnosis'}
+            CumReleaseNum = {Cumulative_ReleaseNum};{ending}"""
+            .format(**self.info_dict),
+            'file_path': '{path}/{diagnosis}'.format(**self.info_dict),
+            'table_name': 'trc_hfs_diagnosis'}
 
-        self.load_inline_dict['institutional_table'] = {'inline_load':"""LOAD DATA LOCAL INFILE '{path}/{institutional}'
-        INTO TABLE {db}.trc_hfs_institutional
-        (@row)
-        SET
+        self.load_inline_dict['institutional_table'] = {'inline_load':
+        """LOAD DATA LOCAL INFILE '{path}/{institutional}'
+          INTO TABLE {db}.trc_hfs_institutional
+          (@row)
+          SET
             DCN = TRIM(SUBSTR(@row,1,15)),
             ServiceLineNbr = TRIM(SUBSTR(@row,16,2)),
             RejectionStatusCd = TRIM(SUBSTR(@row,18,1)),
@@ -244,14 +264,16 @@ class HFSLoadData(object):
             ICDVersion = TRIM(SUBSTR(@row,105,2)),
             DataSource = '{DataSource}',
             ReleaseNum = {ReleaseNum},
-            CumReleaseNum = {Cumulative_ReleaseNum};{ending}""".format(**self.info_dict),
-            'file_path':'{path}/{institutional}'.format(**self.info_dict),
-            'table_name':'trc_hfs_institutional'}
+            CumReleaseNum = {Cumulative_ReleaseNum};{ending}"""
+            .format(**self.info_dict),
+            'file_path': '{path}/{institutional}'.format(**self.info_dict),
+            'table_name': 'trc_hfs_institutional'}
 
-        self.load_inline_dict['nips_table'] = {'inline_load':"""LOAD DATA LOCAL INFILE '{path}/{nips}'
-        INTO TABLE {db}.trc_hfs_nips
-        (@row)
-        SET
+        self.load_inline_dict['nips_table'] = {'inline_load':
+        """LOAD DATA LOCAL INFILE '{path}/{nips}'
+          INTO TABLE {db}.trc_hfs_nips
+          (@row)
+          SET
             DCN = TRIM(SUBSTR(@row,1,15)),
             ServiceLineNbr = TRIM(SUBSTR(@row,16,2)),
             RejectionStatusCd = TRIM(SUBSTR(@row,18,1)),
@@ -267,14 +289,16 @@ class HFSLoadData(object):
             SeqLineNbr = TRIM(SUBSTR(@row,85,2)),
             DataSource = '{DataSource}',
             ReleaseNum = {ReleaseNum},
-            CumReleaseNum = {Cumulative_ReleaseNum};{ending}""".format(**self.info_dict),
-            'file_path':'{path}/{nips}'.format(**self.info_dict),
-            'table_name':'trc_hfs_nips'}
+            CumReleaseNum = {Cumulative_ReleaseNum};{ending}"""
+            .format(**self.info_dict),
+            'file_path': '{path}/{nips}'.format(**self.info_dict),
+            'table_name': 'trc_hfs_nips'}
 
-        self.load_inline_dict['compound_drug_table'] = {'inline_load':"""LOAD DATA LOCAL INFILE '{path}/{compound_drug}'
-        INTO TABLE {db}.trc_hfs_compound_drugs_detail
-        (@row)
-        SET
+        self.load_inline_dict['compound_drug_table'] = {'inline_load':
+        """LOAD DATA LOCAL INFILE '{path}/{compound_drug}'
+          INTO TABLE {db}.trc_hfs_compound_drugs_detail
+          (@row)
+          SET
             DCN = TRIM(SUBSTR(@row,1,15)),
             ServiceLineNbr = TRIM(SUBSTR(@row,16,2)),
             RecipientID = TRIM(SUBSTR(@row,18,9)),
@@ -285,14 +309,16 @@ class HFSLoadData(object):
             IngrQuan = nullif(TRIM(SUBSTR(@row,51,10)),''),
             DataSource = '{DataSource}',
             ReleaseNum = {ReleaseNum},
-            CumReleaseNum = {Cumulative_ReleaseNum};{ending}""".format(**self.info_dict),
-            'file_path':'{path}/{compound_drug}'.format(**self.info_dict),
-            'table_name':'trc_hfs_compound_drugs_detail'}
+            CumReleaseNum = {Cumulative_ReleaseNum};{ending}"""
+            .format(**self.info_dict),
+            'file_path': '{path}/{compound_drug}'.format(**self.info_dict),
+            'table_name': 'trc_hfs_compound_drugs_detail'}
 
-        self.load_inline_dict['procedure_table'] = {'inline_load':"""LOAD DATA LOCAL INFILE '{path}/{procedure}'
-        INTO TABLE {db}.trc_hfs_procedure
-        (@row)
-        SET
+        self.load_inline_dict['procedure_table'] = {'inline_load':
+        """LOAD DATA LOCAL INFILE '{path}/{procedure}'
+          INTO TABLE {db}.trc_hfs_procedure
+          (@row)
+          SET
             DCN = TRIM(SUBSTR(@row,1,15)),
             ServiceLineNbr = TRIM(SUBSTR(@row,16,2)),
             RejectionStatusCd = TRIM(SUBSTR(@row,18,1)),
@@ -310,15 +336,16 @@ class HFSLoadData(object):
             SeqLineNbr = TRIM(SUBSTR(@row,68,2)),
             DataSource = '{DataSource}',
             ReleaseNum = {ReleaseNum},
-            CumReleaseNum = {Cumulative_ReleaseNum};{ending}""".format(**self.info_dict),
-            'file_path':'{path}/{procedure}'.format(**self.info_dict),
-            'table_name':'trc_hfs_procedure'}
+            CumReleaseNum = {Cumulative_ReleaseNum};{ending}"""
+            .format(**self.info_dict),
+            'file_path': '{path}/{procedure}'.format(**self.info_dict),
+            'table_name': 'trc_hfs_procedure'}
 
-
-        self.load_inline_dict['revenue_table'] = {'inline_load':"""LOAD DATA LOCAL INFILE '{path}/{revenue}'
-        INTO TABLE {db}.trc_hfs_revenue_codes
-        (@row)
-        SET
+        self.load_inline_dict['revenue_table'] = {'inline_load':
+        """LOAD DATA LOCAL INFILE '{path}/{revenue}'
+           INTO TABLE {db}.trc_hfs_revenue_codes
+           (@row)
+           SET
             DCN = TRIM(SUBSTR(@row,1,15)),
             ServiceLineNbr = TRIM(SUBSTR(@row,16,2)),
             RejectionStatusCd = TRIM(SUBSTR(@row,18,1)),
@@ -344,82 +371,115 @@ class HFSLoadData(object):
             EAPGCatgCd = TRIM(SUBSTR(@row,156,2)),
             DataSource = '{DataSource}',
             ReleaseNum = {ReleaseNum},
-            CumReleaseNum = {Cumulative_ReleaseNum};{ending}""".format(**self.info_dict),
-            'file_path':'{path}/{revenue}'.format(**self.info_dict),
-            'table_name':'trc_hfs_revenue_codes'}
+            CumReleaseNum = {Cumulative_ReleaseNum};{ending}"""
+            .format(**self.info_dict),
+            'file_path': '{path}/{revenue}'.format(**self.info_dict),
+            'table_name': 'trc_hfs_revenue_codes'}
 
-        mysql_script_name = 'sql_scripts/Load_Data_to_DB_ReleaseNum_{ReleaseNum}.sql'.format(**self.info_dict)
-        insert_info_script_name = 'sql_scripts/Load_info_{ReleaseNum}.sql'.format(**self.info_dict)
-        delete_info_script_name = 'sql_scripts/Delete_Release_Info_{ReleaseNum}.sql'.format(**self.info_dict)
+        mysql_script_name = '''sql_scripts/Load_Data_to_DB_ReleaseNum_
+                               {ReleaseNum}.sql'''.format(**self.info_dict)
+        insert_info_script_name = '''sql_scripts/Load_info_
+                                     {ReleaseNum}.sql'''.format(**self.
+                                                                info_dict)
+        delete_info_script_name = '''sql_scripts/Delete_Release_Info_
+                                     {ReleaseNum}.sql'''.format(**self.
+                                                                info_dict)
 
-        self.renew_script(insert_info_script_name,"USE {db};\n".format(**self.info_dict))
-        self.renew_script(delete_info_script_name,"USE {db};\n".format(**self.info_dict))
+        self.renew_script(insert_info_script_name, "USE {db};\n"
+                          .format(**self.info_dict))
+        self.renew_script(delete_info_script_name, "USE {db};\n"
+                          .format(**self.info_dict))
         self.renew_script(mysql_script_name)
 
         for key in self.load_inline_dict.keys():
 
             table = self.load_inline_dict[key]['table_name']
-
-            insert_str = """INSERT INTO hfs_load_count_info(Table_Name, ReleaseNum, Cumulative_ReleaseNum, Load_Date, Count) select '{table}' as Table_Name, {ReleaseNum} as ReleaseNum,
-            {Cumulative_ReleaseNum} as Cumulative_ReleaseNum, '{load_date}' as Load_Date,(select count(*) from {table}
-            where CumReleaseNum  = {Cumulative_ReleaseNum}) as Count;\n\n""".format(table=table,**self.info_dict)
-
-            delete_str = """DELETE FROM {table} WHERE datasource = '{DataSource}' AND releasenum = {ReleaseNum};\n""".format(table=table,**self.info_dict)
+            insert_str = """INSERT INTO hfs_load_count_info(Table_Name,
+                            ReleaseNum, Cumulative_ReleaseNum, Load_Date,
+                            Count) select '{table}' as Table_Name, {ReleaseNum}
+                            as ReleaseNum, {Cumulative_ReleaseNum} as
+                            Cumulative_ReleaseNum, '{load_date}' as Load_Date,
+                            (select count(*) from {table} where CumReleaseNum
+                            = {Cumulative_ReleaseNum})
+                            as Count;\n\n""".format(table=table,
+                                                    **self.info_dict)
+            delete_str = """DELETE FROM {table} WHERE datasource =
+                            '{DataSource}' AND releasenum =
+                            {ReleaseNum};\n""".format(table=table,
+                                                      **self.info_dict)
 
             self.load_inline_dict[key]['sql_insert'] = insert_str
             self.load_inline_dict[key]['sql_delete'] = delete_str
-
-            self.line_append(mysql_script_name, self.load_inline_dict[key]['inline_load'])
+            self.line_append(mysql_script_name,
+                             self.load_inline_dict[key]['inline_load'])
             self.line_append(insert_info_script_name, insert_str)
             self.line_append(delete_info_script_name, delete_str)
 
-
-    def line_append(self,script_name,str_append):
+    def line_append(self, script_name, str_append):
         '''adds line without having to perform open close over and over'''
         text_file = open(script_name, "a")
         text_file.write(str_append)
         text_file.close()
 
     def inline_loader(self):
-        '''loads data inline to raw tables and catalogs rows counts into hfs_load_count_info'''
+        '''loads data inline to raw tables and catalogs rows
+            counts into hfs_load_count_info'''
         table_count = 12
         counter = 0
         for key in self.load_inline_dict.keys():
             table = self.load_inline_dict[key]['table_name']
             inline_str = self.load_inline_dict[key]['inline_load']
             file_path = self.load_inline_dict[key]['file_path']
-            load_info_tuple = self.connection.inline_import(inline_str,file_path)
+            load_info_tuple = self.connection.inline_import(inline_str,
+                                                            file_path)
             if load_info_tuple[0] != load_info_tuple[1]:
                 print('\n{}: Did not load all rows!\n'.format(table))
-                self.connection.query(self.load_inline_dict[key]['sql_delete'],df_flag=False)
+                self.connection.query(self.load_inline_dict[key]['sql_delete'],
+                                      df_flag=False)
                 print('Deleting rows from DB')
             else:
                 counter += 1
-                print('{}: Load completed correctly n={}'.format(table, load_info_tuple[0]))
-                # Because we have row counts from the query we can perform the insert into hfs_load_count_info
-                # faster with the following query, over writes the other sql_insert query
-                self.load_inline_dict[key]['sql_insert'] = """INSERT INTO hfs_load_count_info(Table_Name, ReleaseNum,Cumulative_ReleaseNum, Load_Date, Count)
-                select '{table}' as Table_Name, {ReleaseNum} as ReleaseNum, {Cumulative_ReleaseNum} as Cumulative_ReleaseNum,
-                '{load_date}' as Load_Date, {row_count} as Count;""".format(table=table,row_count=load_info_tuple[0],
-                                                                           **self.info_dict)
+                print('{}: Load completed correctly n={}'
+                      .format(table, load_info_tuple[0]))
+                # Because we have row counts from the query
+                # we can perform the insert into hfs_load_count_info
+                # faster with the following query, over writes the
+                # other sql_insert query
+                self.load_inline_dict[key]['sql_insert'] = """INSERT INTO
+                  hfs_load_count_info(Table_Name, ReleaseNum,
+                  Cumulative_ReleaseNum, Load_Date, Count) select '{table}' as
+                  Table_Name, {ReleaseNum} as ReleaseNum, {Cumulative_
+                  ReleaseNum} as Cumulative_ReleaseNum,'{load_date}' as
+                  Load_Date, {row_count} as Count;""".format(table=table,
+                                                             row_count=
+                                                             load_info_tuple[0]
+                                                             , **self.info_dict)
         if counter == table_count:
             print('\nAll tables loaded into raw tables correctly\n')
             print('Inserting load information into hfs_load_count_info')
             for key in self.load_inline_dict.keys():
-                self.connection.query(self.load_inline_dict[key]['sql_insert'],df_flag=False)
+                self.connection.query(self.load_inline_dict[key]['sql_insert'],
+                                      df_flag=False)
         else:
             print('ERROR: Not all tables loaded correctly look at log!')
 
-    def delete_tbl_rows(self,table_key):
-        '''table_key: (str) deletes rows with associated table_key. When set to 'All'
-           deletes all rows that were inserted into tables and hfs_load_count_info'''
+    def delete_tbl_rows(self, table_key):
+        '''table_key: (str) deletes rows with associated table_key.
+            When set to 'All' deletes all rows that were inserted into
+            tables and hfs_load_count_info'''
         if table_key == 'All':
             for key in self.load_inline_dict.keys():
-                self.connection.query(self.load_inline_dict[key]['sql_delete'],df_flag=False)
-                print('Deleting rows from {}'.format(self.load_inline_dict[key]['table_name']))
+                self.connection.query(self.load_inline_dict[key]['sql_delete'],
+                                      df_flag=False)
+                print('Deleting rows from {}'.format(self.load_inline_dict[key]
+                                                     ['table_name']))
 
             self.connection.query("""DELETE FROM {db}.hfs_load_count_info
-            where ReleaseNum = {ReleaseNum}""".format(**self.info_dict),df_flag=False)
+                                     where ReleaseNum = {ReleaseNum}"""
+                                  .format(**self.info_dict),
+                                  df_flag=False)
         else:
-            self.connection.query(self.load_inline_dict[table_key]['sql_delete'],df_flag=False)
-            print('Deleted rows from {}'.format(self.load_inline_dict[table_key]['table_name']))
+            self.connection.query(self.load_inline_dict[table_key]
+                                  ['sql_delete'], df_flag=False)
+            print('Deleted rows from {}'.format(self.load_inline_dict
+                                                [table_key]['table_name']))
