@@ -207,7 +207,5 @@ class pre_post_analysis():
 
         group_df = pd.concat(df_list)
         group_df[self.cost_columns] = group_df[self.cost_columns].round(2)
-        group_df['ReleaseNum'] = _release_num
-        group_df['Duration'] = _pre_post_month_window
 
         return pat_info, pat_piv_df, group_df
