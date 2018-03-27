@@ -2,7 +2,6 @@ from datetime import datetime
 from functools import partial
 import numpy as np
 import pandas as pd
-import winsound
 import time
 from CHECK.helpers import PhoneMapHelper
 from CHECK.helpers import contactHelper
@@ -10,12 +9,6 @@ from CHECK.dbconnect import dbconnect
 
 class ConsensusConnect():
 
-    def alertsound(self):
-        for x in range(2,80):
-            Freq = 800*(x//2) # Set Frequency To 2500 Hertz
-            Dur = (100*x)//(x**2) # Set Duration To 1000 ms == 1 second
-
-            winsound.Beep(Freq,Dur)
 
     def assessmentquery(self,assessment=None):
         '''Query for all assessments unless assessment contains a list of assessments that are needed'''
@@ -334,5 +327,5 @@ class ConsensusConnect():
             elif df_flag == True:
                 alliDF = connector.query(sql_str,df_flag=True,parse_dates=parse_dates)
         finally:
-            self.alertsound()
+            f = 'completed'
         return alliDF
