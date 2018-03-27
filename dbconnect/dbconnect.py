@@ -22,7 +22,7 @@ class DatabaseConnect():
         connection = engine.connect()
         return connection
 
-    def query(self,sql_str,df_flag=True,parse_dates=None,chunksize=None):
+    def query(self,sql_str,df_flag=True,parse_dates=None,chunksize=None,columns=None):
         '''
         sql_str(str): query to be fetched from data base
         returns a pandas dataframe that contains query results

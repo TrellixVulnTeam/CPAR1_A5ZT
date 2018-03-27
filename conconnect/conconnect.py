@@ -16,14 +16,9 @@ class ConsensusConnect():
             Dur = (100*x)//(x**2) # Set Duration To 1000 ms == 1 second
 
             winsound.Beep(Freq,Dur)
+
     def assessmentquery(self,assessment=None):
         '''Query for all assessments unless assessment contains a list of assessments that are needed'''
-
-        if assessment == None:
-            assessment = ''
-        else:
-            assessment = ", ".join([str(x) for x in assessment])
-            assessment = "AND qst_questionnaire.ID in ({})".format(assessment)
 
         m = """
             SELECT
@@ -52,9 +47,9 @@ class ConsensusConnect():
                 JOIN qst_question ON (qst_question.ID = qst_questionnairequestion.QuestionID)
                 JOIN qst_response ON (qst_response.QuestionID = qst_questionnairequestion.QuestionID
                     AND qst_response.MedRecPatientID = pat_patient.ID))
-            WHERE pat_assessment.StatusCode IN ('Completed','In Process','New') {}
+            WHERE pat_assessment.StatusCode IN ('Completed','In Process','New')
             AND qst_response.ResponseDate BETWEEN pat_assessment.CTS AND pat_assessment.EndDate
-            ORDER BY pat_assessment.PatientID , pat_assessment.ClientAssessmentID , pat_assessment.StartDate;""".format(assessment)
+            ORDER BY pat_assessment.PatientID , pat_assessment.ClientAssessmentID , pat_assessment.StartDate;"""
 
         alli = self.connect(m,db_name='consensus')
         #if 'InTime Range == 2 than the question fits within the window of responses, if the question does not fit in window the
@@ -91,7 +86,7 @@ class ConsensusConnect():
                 JOIN
             gbl_codevalue ON gbl_code.CodeName = gbl_codevalue.CodeName
         WHERE
-            gbl_code.CodeName LIKE 'Question %';"""
+            gbl_code.CodeName LIKE 'Question %%';"""
         code_name = self.connect(n,db_name='consensus')
         return code_name
 
@@ -180,7 +175,7 @@ class ConsensusConnect():
         return self.connect(m,db_name='CHECK_Enrollment_DB')
 
     def harmonyGroups(self):
-        m = "SELECT * FROM CHECK_Enrollment_DB.vw_harmony_randomization_groups_current;;"
+        m = "SELECT * FROM CHECK_Enrollment_DB.vw_harmony_randomization_groups_current;"
         return self.connect(m,db_name='CHECK_Enrollment_DB')
 
     def chwmapping(self):
@@ -193,7 +188,7 @@ class ConsensusConnect():
 
     def pharmacy(self):
         m = "SELECT * FROM tsc_hfs_pharmacy;"
-        return self.connect(m,db_name="CHECK_CPAR")
+        return self.connect(m,db_name="CHECK_CPAR2")
 
     def icdDescription(self):
         m = "SELECT * FROM icd_descriptions;"

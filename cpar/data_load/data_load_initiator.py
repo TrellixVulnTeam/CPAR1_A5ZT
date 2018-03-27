@@ -1,6 +1,5 @@
 import fire
 import sys
-sys.path.insert(0, "/Users/maitraikansal/.ipython")
 from CHECK.dbconnect import dbconnect
 from CHECK.cpar.data_load.extract_and_rename_files import ExtractFiles
 from CHECK.cpar.data_load.hfs_load_data import HFSLoadData
@@ -8,8 +7,7 @@ from CHECK.cpar.data_load.hfs_load_data import HFSLoadData
 
 class DataLoadInitiator(object):
 
-    def __init__(self, release_num, release_date, database='CHECK_CPAR2',
-                 data_source='HFS'):
+    def __init__(self, release_num, release_date, database='CHECK_CPAR2',data_source='HFS'):
 
         self.release_date = release_date
         self.database = database
@@ -19,11 +17,9 @@ class DataLoadInitiator(object):
 
     def initiate_process(self):
         print('Initiated')
-        self.conn.query("""Call pat_info_demo_load({})""".format(
-                                              self.release_num), df_flag=False)
+        self.conn.query("""Call pat_info_demo_load({})""".format(self.release_num), df_flag=False)
         if ExtractFiles().create_and_unzip_files():
-            HFSLoad = HFSLoadData(self.database, self.release_num,
-                                  self.data_source)
+            HFSLoad = HFSLoadData(self.database, self.release_num,self.data_source)
             HFSLoad.load_data()
             HFSLoad.inline_loader()
 
