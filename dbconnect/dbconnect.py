@@ -12,14 +12,14 @@ class DatabaseConnect():
         self.password = _sec.getSecret()
         self.port = _sec.getPort()
         self.database = database
+        self.engine = create_engine("mysql+pymysql://{}:{}@{}:{}/{}".format(self.username,
+                                                                            self.password,
+                                                                            self.hostname,
+                                                                            self.port,
+                                                                            self.database))
 
     def connection_obj(self):
-        engine = create_engine("mysql+pymysql://{}:{}@{}:{}/{}".format(self.username,
-                                                                       self.password,
-                                                                       self.hostname,
-                                                                       self.port,
-                                                                       self.database))
-        connection = engine.connect()
+        connection = self.engine.connect()
         return connection
 
     def query(self,sql_str,df_flag=True,parse_dates=None,chunksize=None,columns=None):
@@ -54,6 +54,23 @@ class DatabaseConnect():
             connection.close()
         except:
             raise Exception
+
+    def stored_procedure(self, proc_name, proc_params=None):
+        '''Used to call a stored procedure;
+        proc_params(list): list of parameters'''
+
+        connection = self.engine.raw_connection()
+        try:
+            cursor = connection.cursor()
+            if proc_params == None:
+                cursor.callproc(proc_name)
+            else:
+                cursor.callproc(proc_name, proc_params)
+            results = list(cursor.fetchall())
+            cursor.close()
+            connection.commit()
+        finally:
+            connection.close()
 
 
     def replace(self,df,tbl,chunksize=None):

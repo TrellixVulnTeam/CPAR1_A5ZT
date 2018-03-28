@@ -5,11 +5,13 @@ from CHECK.dbconnect import dbconnect
 from CHECK.conconnect import conconnect
 
 class pre_post_analysis():
-    '''Pre-Post costs of a certain amount of n amount of months.
-       Currently only works for test CHECK_Categories'''
-    def __init__(self,pp_month_size,release_num,db_name):
+    def __init__(self,pp_n_months,release_num,db_name):
+        '''pp_n_months: (int) Number of months to select pre and post the
+        patients program date
+        release_num: (int) Release to select from rid_pre_post_pat_windows
+        Currently only works for test CHECK_Categories'''
         self.query = conconnect.ConsensusConnect()
-        self.pp_n_months = pp_month_size
+        self.pp_n_months = pp_n_months
         self.release_num = release_num
         self.db_name = db_name
         self.connection = dbconnect.DatabaseConnect(self.db_name)
@@ -18,9 +20,8 @@ class pre_post_analysis():
                              'Pharmacy_Pre','Pharmacy_Post','Total_Pre','Total_Post']
 
     def pt_info(self):
-        '''Selects patients that have the necessary months of data and joins demographic information
-        pp_n_months: (int) Number of months to select pre and post the patients engagement date
-        release_num: (int) Release to select from rid_pre_post_pat_windows'''
+        '''Selects patients that have the necessary months of
+        data and joins demographic information'''
 
         pat_query = """SELECT * FROM rid_pre_post_pat_windows where negative_duration >= {}
                         and positive_duration >= {} AND ReleaseNum = {}""".format(self.pp_n_months,
@@ -61,7 +62,10 @@ class pre_post_analysis():
             procedureCount as ProcedureCount,
             encounter Encounter,
             VisitInpatientDays from rid_costs where RecipientID in ({})
-        GROUP BY RecipientID, DCN, CHECK_Category, ServiceFromDt""".format(unique_recipientID)
+            and Window between {} and {}
+        GROUP BY RecipientID, DCN, CHECK_Category, ServiceFromDt""".format(unique_recipientID,
+                                                                          -self.pp_n_months,
+                                                                           self.pp_n_months)
 
         tot_cost_df = self.query.connect(claims_query, db_name=self.db_name,
                                     parse_dates=['ServiceFromDt','ServiceThruDt'])
@@ -144,8 +148,8 @@ class pre_post_analysis():
         group_index = itertools.product(*group_index)
         total_group_combinations = pd.DataFrame(index=group_index)
         group_df = individual_data.groupby(agg_col).agg(agg_values)
-        group_df['Group_Subset']= group_df.index.get_values()
-        group_df.rename_axis({'RecipientID':'N'},axis=1,inplace=True)
+        group_df['Group_Subset'] = group_df.index.get_values()
+        group_df.rename(columns={'RecipientID':'N'},inplace=True)
         group_df = pd.merge(total_group_combinations,group_df,left_index=True,
                             right_on='Group_Subset',how='left')
         group_df['Group_Type'] = "::".join(agg_col)
@@ -156,6 +160,8 @@ class pre_post_analysis():
         group_df = group_df.reset_index(drop=True)
         group_df = group_df[['Group_Type','Group_Subset','Aggregation_Function',
                             'Value','N'] + agg_columns]
+        group_df['Duration'] = self.pp_n_months
+        group_df['ReleaseNum'] = self.release_num
         return group_df
 
     def full_run(self,to_sql):
@@ -171,9 +177,6 @@ class pre_post_analysis():
                          'Prematurity','Brain_Injury','Epilepsy','Diagnosis_Category','Risk',
                          'Age_Cat','Age','Gender','E2','E4','HC','HE2','HE4','Pregnancy','ReleaseNum']
 
-        if to_sql == True:
-            self.connection.insert(pat_info[pat_info_cols],'rid_pre_post_pat_info')
-
         jumper = 3000
         agg_columns = ['AdjustedPriceAmt','Visit','VisitInpatientDays']
         pat_piv_df = []
@@ -187,8 +190,6 @@ class pre_post_analysis():
                 pat_piv_df.append(pre_post_pivot)
 
         pat_piv_df = pd.concat(pat_piv_df)
-        if to_sql == True:
-            self.connection.insert(pat_piv_df,'rid_pre_post_individual')
 
         pat_piv_info_df = pd.merge(pat_piv_df, pat_info, on=['RecipientID','Duration','ReleaseNum'])
 
@@ -207,5 +208,11 @@ class pre_post_analysis():
 
         group_df = pd.concat(df_list)
         group_df[self.cost_columns] = group_df[self.cost_columns].round(2)
+
+
+        if to_sql == True:
+            self.connection.insert(pat_info[pat_info_cols],'rid_pre_post_pat_info')
+            self.connection.insert(pat_piv_df,'rid_pre_post_individual')
+            self.connection.insert(group_df,'rid_pre_post_groupings')
 
         return pat_info, pat_piv_df, group_df

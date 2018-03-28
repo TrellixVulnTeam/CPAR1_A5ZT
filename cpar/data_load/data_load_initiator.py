@@ -19,13 +19,12 @@ class DataLoadInitiator(object):
         print('Initiated')
         self.conn.query("""Call pat_info_demo_load({})""".format(self.release_num), df_flag=False)
         if ExtractFiles().create_and_unzip_files():
-            HFSLoad = HFSLoadData(self.database, self.release_num,self.data_source)
+            HFSLoad = HFSLoadData(self.database, self.release_num, self.data_source)
             HFSLoad.load_data()
             HFSLoad.inline_loader()
 
 
 if __name__ == '__main__':
-
     #fire.Fire(DataLoadInitiator)
      print('hello, lets start!')
      DataLoadInitiator('234','34','CHECK_CPAR2', 'hfs').initiate_process()
