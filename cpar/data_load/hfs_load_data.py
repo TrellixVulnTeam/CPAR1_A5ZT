@@ -28,8 +28,8 @@ class HFSLoadData(object):
         self.info_dict['load_date'] = '{:%Y-%m-%d}'.format(datetime.today())
         self.info_dict['DataSource'] = source
         self.info_dict['db'] = database
-        self.info_dict['ReleaseNum'] = str(release_num)
-        self.info_dict['Cumulative_ReleaseNum'] = self.info_dict['ReleaseNum'][2:]
+        self.info_dict['ReleaseNum'] = str(release_num).replace('\n','').strip()
+        self.info_dict['Cumulative_ReleaseNum'] = str(release_num).replace('\n','').strip()[2:]
         self.load_inline_dict = {}
 
         if 'sql_scripts' not in os.listdir():
@@ -449,8 +449,8 @@ class HFSLoadData(object):
                 self.load_inline_dict[key]['sql_insert'] = """INSERT INTO
                   hfs_load_count_info(Table_Name, ReleaseNum,
                   Cumulative_ReleaseNum, Load_Date, Count) select '{table}' as
-                  Table_Name, {ReleaseNum} as ReleaseNum, {Cumulative_
-                  ReleaseNum} as Cumulative_ReleaseNum,'{load_date}' as
+                  Table_Name, {ReleaseNum} as ReleaseNum, {Cumulative_ReleaseNum} as
+                   Cumulative_ReleaseNum,'{load_date}' as
                   Load_Date, {row_count} as Count;""".format(table=table,
                                                              row_count=
                                                              load_info_tuple[0]
