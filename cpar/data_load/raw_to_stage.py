@@ -7,7 +7,7 @@ class raw_to_stage():
         self.start_date = '2013-01-01'
         self.db = db
         self.connector = dbconnect.DatabaseConnect(self.db)
-        self.release_date
+        self.release_date = release_date
         self.release_num = release_num
 
 
