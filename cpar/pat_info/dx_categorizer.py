@@ -87,9 +87,8 @@ class DiagnosisMaster(object):
                                       & (inc_exc_codes['Incl_Excl'] == 'E'),
                                       'Dx_Code'])
 
-                dx_codes[dx] = dx_codes['ICD_Codes_List']
-                .apply(lambda x: 1 if (len(set(x) & inc_codes) > 0) &
-                       (len(set(x) & exc_codes) == 0) else 0)
+                dx_codes[dx] = dx_codes['ICD_Codes_List'].apply(lambda x: 1 if (len(set(x) & inc_codes) > 0)
+                & (len(set(x) & exc_codes) == 0) else 0)
             # calculate SCD from SCD_claims and determine diagnosis_category
             if table == 'dx_code_inc_exc_primary_diagnosis':
                 pat_scd_clams_info = self.connector.query(

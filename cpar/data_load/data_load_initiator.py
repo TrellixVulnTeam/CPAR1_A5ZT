@@ -1,6 +1,6 @@
 import fire
 import sys
-from CHECK.dbconnect import dbconnect_temp
+from CHECK.dbconnect import dbconnect
 from CHECK.cpar.data_load.extract_and_rename_files import ExtractFiles
 from CHECK.cpar.data_load.hfs_load_data import HFSLoadData
 from CHECK.cpar.pat_info.dx_categorizer import DiagnosisMaster
