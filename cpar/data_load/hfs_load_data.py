@@ -56,8 +56,9 @@ class HFSLoadData(object):
 
     def load_data(self):
         '''Writes 3 sql scripts: An insert script, a delete script that
-           removes the load from the raw tables and an insert which records the
-           numbers of rows into the  hfs_load_count_info table
+           removes the load from the raw tables if an error
+           occurs and an insert scripts which records the
+           numbers of rows into the hfs_load_count_info table
            The sql commands are stored in the dictionary and can be queried
            when the file_loader method is called'''
 

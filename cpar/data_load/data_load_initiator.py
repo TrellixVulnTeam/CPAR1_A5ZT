@@ -11,8 +11,7 @@ from CHECK.cpar.cost_analysis.pre_post_analysis import pre_post_analysis
 
 class DataLoadInitiator(object):
 
-    def __init__(self, release_num, release_date, database='CHECK_CPAR2',
-                 data_source='HFS'):
+    def __init__(self, release_num, release_date, database='CHECK_CPAR2', data_source='HFS'):
 
         self.release_date = release_date
         self.database = database
@@ -31,7 +30,7 @@ class DataLoadInitiator(object):
 
     def load_demo_data(self):
         print('Loading demographics data...')
-        self.conn.stored_procedure('pat_info_demo_load', self.release_num)
+        self.conn.stored_procedure('pat_info_demo_load', [self.release_num,self.release_date])
         print('Demographics data loaded')
 
     def load_raw_data(self):
