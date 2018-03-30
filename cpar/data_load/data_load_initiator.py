@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import fire
 import sys
 from CHECK.dbconnect import dbconnect
