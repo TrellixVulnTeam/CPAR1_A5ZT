@@ -57,11 +57,11 @@ class pre_post_analysis():
             ServiceThruDt,
             CHECK_Category,
             SUM(AdjustedPriceAmt) as AdjustedPriceAmt,
-            visit as Visit,
-            Service_count as ServiceCount,
-            Procedure_Count as ProcedureCount,
-            encounter Encounter,
-            Visit_Inpatient_Days as VisitInpatientDays from rid_costs where RecipientID in ({})
+            SUM(Visit),
+            SUM(Service_count) as ServiceCount,
+            SUM(Procedure_Count) as ProcedureCount,
+            SUM(Encounter),
+            SUM(Visit_Inpatient_Days) as VisitInpatientDays from rid_costs where RecipientID in ({})
             and Window between {} and {}
         GROUP BY RecipientID, DCN, CHECK_Category, ServiceFromDt""".format(unique_recipientID,
                                                                           -self.pp_n_months,
