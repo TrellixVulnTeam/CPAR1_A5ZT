@@ -54,6 +54,7 @@ class DataLoadInitiator(object):
         print(DiagnosisMaster(self.database).load_diag_data())
         print(RiskCalculator(self.database, self.release_num).main())
         self.conn.stored_procedure('pat_info_demo_complete_generation',[self.release_num])
+        
     def analysis(self):
 
         self.conn.stored_procedure('rid_cost_insert')

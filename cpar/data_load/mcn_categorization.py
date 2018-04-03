@@ -11,6 +11,7 @@ class mcn_categorization():
         self.release_num = release_num
         self.db_name = db_name
         self.connector = dbconnect.DatabaseConnect(self.db_name)
+        self.primary_keys = ['DCN','ServiceLineNbr','RejectionStatusCd','RecipientID','AdjudicatedDt']
         self.output_cols = ['RecipientID','RejectionStatusCd','ServiceLineNbr','AdjudicatedDt',
                             'DCN','Category1','Category2','Category3','Category2Rank','Category3Rank',
                             'NetLiabilityAmt', 'EncounterPriceAmt','Visit','Service_Count','Procedure_Count',
