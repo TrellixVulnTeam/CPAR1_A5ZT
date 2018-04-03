@@ -306,16 +306,61 @@ class ConsensusConnect():
                 CHECK_Enrollment_DB.vw_current_total_patient_status cs ON te.RecipientID = cs.RecipientID
             		LEFT JOIN
             	CHECK_Enrollment_DB.vw_current_patient_groupings pg on pg.RecipientID = te.RecipientID;"""
-        df =  self.connect(m,db_name="CHECK_CPAR")
+        df =  self.connect(m,db_name="CHECK_CPAR2")
         con_risk = self.consensusRisk()
         enrollment = pd.merge(df,con_risk,on='PatientID')
         return enrollment
+
+    def hfs_pk_indexer(self, df):
+        '''Sets columns to index described by HFS and sets columns as category type'''
+        primary_keys = ['DCN','ServiceLineNbr','RejectionStatusCd','RecipientID','AdjudicatedDt']
+        cat_cols = ['RecipientID','DCN','ServiceLineNbr','RejectionStatusCd']
+        for i in cat_cols:
+            df[i] = df[i].astype('category')
+        return df.set_index(primary_keys)
+
+    def mcn_categorization_query(self):
+        mcn = self.connect('''SELECT DCN, ServiceLineNbr, RejectionStatusCd,
+        RecipientID, AdjudicatedDt, ServiceFromDt, ServiceThruDt, CatgofServiceCd,
+        RecordIDCd, EncounterPriceAmt, NetLiabilityAmt from tsc_hfs_main_claims_new;''',
+        db_name='CHECK_CPAR2',parse_dates=['AdjudicatedDt','ServiceFromDt','ServiceThruDt'])
+        mcn = self.hfs_pk_indexer(mcn)
+        return mcn
+
+    def revenue_code_query(self):
+
+        rev_codes = self.connect('''SELECT RecipientID, ServiceLineNbr, DCN, AdjudicatedDt,
+        RejectionStatusCd, RevenueCd, RevenueHCPCSCd FROM tsc_hfs_revenue_codes''', db_name='CHECK_CPAR2' ,parse_dates=['AdjudicatedDt'],)
+        return self.hfs_pk_indexer(rev_codes)
+
+    def ip_code_query(self):
+
+        ip_codes = self.connect('''SELECT RecipientID, ServiceLineNbr, DCN, AdjudicatedDt,
+        RejectionStatusCd, UBTypeofBillCd FROM tsc_hfs_institutional''', parse_dates=['AdjudicatedDt'], db_name='CHECK_CPAR2')
+        ip_codes['UBTypeofBillCd']  = ip_codes['UBTypeofBillCd'].astype(int)
+        return self.hfs_pk_indexer(ip_codes)
+
+    def procedure_code_query(self):
+
+        pc_codes = self.connect('''SELECT RecipientID, ServiceLineNbr, DCN, AdjudicatedDt,
+        RejectionStatusCd, ProcCd FROM tsc_hfs_procedure''', parse_dates=['AdjudicatedDt'], db_name='CHECK_CPAR2')
+        pc_codes['ProcCd'] = pc_codes['ProcCd'].astype('category')
+        return self.hfs_pk_indexer(pc_codes)
+
+    def nip_code_query(self):
+        nip_codes = self.connect('''SELECT RecipientID, ServiceLineNbr, DCN, AdjudicatedDt,
+        RejectionStatusCd, PlaceOfServiceCd FROM tsc_hfs_nips''',parse_dates=['AdjudicatedDt'], db_name='CHECK_CPAR2')
+        return self.hfs_pk_indexer(nip_codes)
+
+    def bill_categorizer_query(self):
+        bill_categorization = self.connect('''SELECT * FROM hfs_categorization_tbl;''', db_name='CHECK_CPAR2')
+        return bill_categorization
 
     def callACT(self):
         m = 'CALL act_scores();'
         return self.connect(m,db_name='Consensus_Reporting',df_flag=False)
 
-    def connect(self,sql_str,db_name,df_flag=True,parse_dates=None):
+    def connect(self, sql_str, db_name, df_flag=True, parse_dates=None):
         '''sql_str: query text to be sent to db
         db_name: str of the database query is sent to
         df_flag: Boolean to return an pandas dataframe or not'''
@@ -325,7 +370,7 @@ class ConsensusConnect():
                 connector.query(sql_str,df_flag=False)
                 alliDF = "'{}' successfully ran".format(sql_str)
             elif df_flag == True:
-                alliDF = connector.query(sql_str,df_flag=True,parse_dates=parse_dates)
+                alliDF = connector.query(sql_str, df_flag=True, parse_dates=parse_dates)
         finally:
             f = 'completed'
         return alliDF

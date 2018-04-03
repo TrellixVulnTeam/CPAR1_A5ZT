@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 from CHECK.dbconnect import dbconnect
+from CHECK.conconnect import conconnect
 
 
 class mcn_categorization():
@@ -10,71 +11,21 @@ class mcn_categorization():
         self.release_num = release_num
         self.db_name = db_name
         self.connector = dbconnect.DatabaseConnect(self.db_name)
-        self.primary_keys = ['DCN','ServiceLineNbr','RejectionStatusCd','RecipientID','AdjudicatedDt']
         self.output_cols = ['RecipientID','RejectionStatusCd','ServiceLineNbr','AdjudicatedDt',
                             'DCN','Category1','Category2','Category3','Category2Rank','Category3Rank',
                             'NetLiabilityAmt', 'EncounterPriceAmt','Visit','Service_Count','Procedure_Count',
                             'Encounter','Visit_Inpatient_Days']
 
-    def tbl_indexer(self, df):
-        '''Sets all of the code tables queries to the same index.'''
-        cat_cols = ['RecipientID','DCN','ServiceLineNbr','RejectionStatusCd']
-        for i in cat_cols:
-            df[i] = df[i].astype('category')
-        return df.set_index(self.primary_keys)
 
-    def mcn_query(self):
-        mcn = self.connector.query('''SELECT DCN, ServiceLineNbr, RejectionStatusCd,
-        RecipientID, AdjudicatedDt, ServiceFromDt, ServiceThruDt, CatgofServiceCd,
-        RecordIDCd, EncounterPriceAmt, NetLiabilityAmt from tsc_hfs_main_claims_new;''',
-                              parse_dates=['AdjudicatedDt','ServiceFromDt','ServiceThruDt'])
-        mcn = self.tbl_indexer(mcn)
-        return mcn
-
-    def revenue_code_query(self):
-
-        rv_codes = self.connector.query('''SELECT RecipientID, ServiceLineNbr, DCN, AdjudicatedDt,
-        RejectionStatusCd, RevenueCd, RevenueHCPCSCd FROM tsc_hfs_revenue_codes''', parse_dates=['AdjudicatedDt'])
-        rv_codes = self.tbl_indexer(rv_codes)
-        return rv_codes
-
-    def ip_code_query(self):
-
-        ip_codes = self.connector.query('''SELECT RecipientID, ServiceLineNbr, DCN, AdjudicatedDt,
-        RejectionStatusCd, UBTypeofBillCd FROM tsc_hfs_institutional''', parse_dates=['AdjudicatedDt'])
-        ip_codes = self.tbl_indexer(ip_codes)
-        ip_codes['UBTypeofBillCd']  = ip_codes['UBTypeofBillCd'].astype(int)
-        return ip_codes
-
-    def procedure_code_query(self):
-
-        pc_codes = self.connector.query('''SELECT RecipientID, ServiceLineNbr, DCN, AdjudicatedDt,
-        RejectionStatusCd, ProcCd FROM tsc_hfs_procedure''', parse_dates=['AdjudicatedDt'])
-        pc_codes = self.tbl_indexer(pc_codes)
-        pc_codes['ProcCd'] = pc_codes['ProcCd'].astype('category')
-        return pc_codes
-
-    def nip_code_query(self):
-
-        nip_codes = self.connector.query('''SELECT RecipientID, ServiceLineNbr, DCN, AdjudicatedDt,
-        RejectionStatusCd, PlaceOfServiceCd FROM tsc_hfs_nips''',parse_dates=['AdjudicatedDt'])
-        nip_codes = self.tbl_indexer(nip_codes)
-        return nip_codes
-
-    def bill_categorizer_query(self):
-
-        bill_categorization = self.connector.query('''SELECT * FROM hfs_categorization_tbl;''')
-        return bill_categorization
-
-    def tbl_code_maker(self):
-
-        self.mcn = self.mcn_query()
-        self.rv_codes = self.revenue_code_query()
-        self.ip_codes = self.ip_code_query()
-        self.pc_codes = self.procedure_code_query()
-        self.nip_codes = self.nip_code_query()
-        self.rv_codes = self.revenue_code_query()
-        self.bill_categorization = self.bill_categorizer_query()
+    def code_table_intializer(self):
+        query = conconnect.ConsensusConnect()
+        self.mcn = query.mcn_categorization_query()
+        self.rv_codes = query.revenue_code_query()
+        self.ip_codes = query.ip_code_query()
+        self.pc_codes = query.procedure_code_query()
+        self.nip_codes = query.nip_code_query()
+        self.rv_codes = query.revenue_code_query()
+        self.bill_categorization = query.bill_categorizer_query()
 
     def ip_categorization(self, mcn, ip_codes, rv_codes, pc_codes):
 
@@ -237,11 +188,10 @@ class mcn_categorization():
 
 
     def full_run(self):
-        self.tbl_code_maker()
+        self.code_table_intializer()
         mcn_cat = self.mcn_categorization(self.mcn, self.bill_categorization, self.rv_codes,
                                           self.nip_codes, self.pc_codes, self.ip_codes)
         mcn_cat['Prematurity_Ineligible'] = 0
-
         mcn_cat = mcn_cat[['DCN','ServiceLineNbr','RejectionStatusCd','RecipientID','AdjudicatedDt','AdjustedPriceAmt',
         'Category1','Category2','Category3','CHECK_Category','Category2Rank','Category3Rank','Visit',
         'Service_Count','Procedure_Count','Encounter','Visit_Inpatient_Days','Prematurity_Ineligible']]
