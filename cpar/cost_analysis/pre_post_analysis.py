@@ -57,7 +57,7 @@ class pre_post_analysis():
             ServiceThruDt,
             CHECK_Category,
             SUM(AdjustedPriceAmt) as AdjustedPriceAmt,
-            SUM(Visit),
+            SUM(Visit) as Visit,
             SUM(Service_count) as ServiceCount,
             SUM(Procedure_Count) as ProcedureCount,
             SUM(Encounter),
