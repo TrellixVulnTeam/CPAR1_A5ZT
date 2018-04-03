@@ -1,6 +1,5 @@
 
 import sys
-sys.path.insert(0, "/Users/maitraikansal/.ipython")
 import pandas as pd
 import numpy as np
 from CHECK.dbconnect import dbconnect
@@ -9,7 +8,7 @@ from CHECK.dbconnect import dbconnect
 class DiagnosisMaster(object):
 
     def __init__(self, database='CHECK_CPAR2'):
-        print('init called')
+
         self.connector = dbconnect.DatabaseConnect(database)
 
         self.table_dx_codes = 'tsc_hfs_diagnosis'
@@ -87,8 +86,9 @@ class DiagnosisMaster(object):
                                       & (inc_exc_codes['Incl_Excl'] == 'E'),
                                       'Dx_Code'])
 
-                dx_codes[dx] = dx_codes['ICD_Codes_List'].apply(lambda x: 1 if (len(set(x) & inc_codes) > 0)
-                & (len(set(x) & exc_codes) == 0) else 0)
+                dx_codes[dx] = dx_codes['ICD_Codes_List'].apply(lambda x: 1 if
+                (len(set(x) & inc_codes) > 0) & (len(set(x) &
+                                                 exc_codes) == 0) else 0)
             # calculate SCD from SCD_claims and determine diagnosis_category
             if table == 'dx_code_inc_exc_primary_diagnosis':
                 pat_scd_clams_info = self.connector.query(
@@ -108,7 +108,4 @@ class DiagnosisMaster(object):
             dx_codes = dx_codes.drop(dx_codes.iloc[:, 3:], axis=1)
             index += 1
 
-
-if __name__ == '__main__':
-    d = DiagnosisMaster('CHECK_CPAR2')
-    d.load_diag_data()
+        return 'Diagnosis Categorization completed'
