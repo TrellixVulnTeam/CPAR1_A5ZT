@@ -58,7 +58,7 @@ class pre_post_analysis():
             CHECK_Category,
             SUM(AdjustedPriceAmt) as AdjustedPriceAmt,
             SUM(Visit) as Visit,
-            SUM(Service_count) as ServiceCount,
+            SUM(Service_Count) as ServiceCount,
             SUM(Procedure_Count) as ProcedureCount,
             SUM(Encounter),
             SUM(Visit_Inpatient_Days) as VisitInpatientDays from rid_costs where RecipientID in ({})

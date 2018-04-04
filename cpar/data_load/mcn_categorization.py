@@ -138,29 +138,35 @@ class mcn_categorization():
         op_merge['Visit_Inpatient_Days'] = 0
         return op_merge[self.output_cols]
 
-    def nips_categorization(self,mcn,bill_categorization,nip_codes,pc_codes):
+    def nips_categorization(self, mcn, bill_categorization, nip_codes, pc_codes):
 
         nip_cats = bill_categorization.loc[bill_categorization['Category1']=='NIPS']
         nip_bills = mcn.loc[mcn['RecordIDCd']=='N']
-
         nip_bills = pd.merge(nip_bills, nip_codes, how='left', left_index=True, right_index=True)
         nip_bills = pd.merge(nip_bills, pc_codes, how='left', left_index=True, right_index=True)
         nip_merge = pd.merge(nip_bills.reset_index(),nip_cats,how='left',on=['ProcCd'])
-        # where there is a match in PlaceOfServiceCd it becomes highest priority
-        nip_merge.loc[nip_merge['PlaceOfServiceCd_x']==nip_merge['PlaceOfServiceCd_y'],'Category2Rank'] = 0
         nip_merge['Category1'] = nip_merge['Category1'].fillna('NIPS')
         nip_merge['Category2'] = nip_merge['Category2'].fillna('OTHER')
         nip_merge['Category3'] = nip_merge['Category3'].fillna('OTHER_PROF')
         nip_merge[['Category2Rank','Category3Rank']] = nip_merge[['Category2Rank','Category3Rank']].fillna(15.0)
+        # where there is a match in PlaceOfServiceCd it becomes highest priority
+        nip_merge.loc[nip_merge['PlaceOfServiceCd_x']==nip_merge['PlaceOfServiceCd_y'],'Category2Rank'] = 0
+        nip_merge.loc[nip_merge['PlaceOfServiceCd_x']==nip_merge['PlaceOfServiceCd_y'],'Match'] = 1
+        # splits matching to those that did not and those that did not
+        # have a match removed all other PlaceofServiceCd to keep only the other category
+        match_nips = nip_merge.loc[nip_merge['Match']==1]
+        nonmatch_nips = nip_merge.loc[nip_merge['Match']!=1]
+        nip_merge['PlaceOfServiceCd_y'] = nip_merge['PlaceOfServiceCd_y'].fillna('')
+        nonmatch_nips = nonmatch_nips.loc[nonmatch_nips['PlaceOfServiceCd_y']=='']
+        nip_merge = pd.concat([nonmatch_nips,match_nips])
 
-        nip_merge = nip_merge.sort_values(self.primary_keys+['Category2Rank','Category3Rank'])
+        nip_merge = nip_merge.sort_values(self.primary_keys + ['Category2Rank','Category3Rank'])
         nip_merge = nip_merge.drop_duplicates(subset=self.primary_keys)
         nip_merge['Visit'] = 0
-        nip_merge.loc[nip_merge['Category3'].isin(('OTHER_OUTPATIENT_VISIT' ,
-                                                   'HOSPITAL_OUTPATIENT_VISIT',
+        nip_merge.loc[nip_merge['Category3'].isin(('OTHER_OUTPATIENT_VISIT' ,'HOSPITAL_OUTPATIENT_VISIT',
                                                    'OFFICE_VISIT','RURAL_HEALTH_CLINIC_VISIT',
                                                    'HOME_VISIT','TELEPHONE_VISIT',
-                                                   'PREVENTIVE_VISIT','OUTPATIENT_CONSULT')),'Visit'] = 1
+                                                   'PREVENTIVE_VISIT','OUTPATIENT_CONSULT')), 'Visit'] = 1
         nip_merge['Service_Count'] = 1
         nip_merge['Encounter'] = 1
         nip_merge['Procedure_Count'] = 0

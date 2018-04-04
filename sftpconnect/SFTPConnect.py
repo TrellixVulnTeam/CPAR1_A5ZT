@@ -7,7 +7,6 @@ class SFTPConnect:
 
     def __init__(self,port=22,username="Anonymous",password=""):
 
-
         identifier = secret().getSFTP(username)
         self.sftpName = identifier[0]
         self.transport = paramiko.Transport((self.sftpName, port))
