@@ -2,6 +2,7 @@ import pandas as pd
 import os
 from CHECK.dbconnect import dbconnect
 from CHECK.cpar.data_load import mcn_categorization
+from CHECK.slack.slack_log import cli_output
 
 class raw_to_stage():
     def __init__(self, release_date, release_num, db):
@@ -32,6 +33,7 @@ class raw_to_stage():
         self.connector.stored_procedure('proc_get_sc_hfs_main_claims_new',
                                         [self.start_date,self.release_date,self.release_num])
         mcn_file_name = 'mcn_categorization.csv'
+        cli_output('Loaded raw to stage, performing MCN categorization')
         self.mcn_cat_upload(mcn_file_name)
         self.connector.stored_procedure('update_mcn')
         os.remove(mcn_file_name)

@@ -10,6 +10,7 @@ from CHECK.cpar.pat_info.risk_calculator import RiskCalculator
 from CHECK.cpar.data_load.raw_to_stage import raw_to_stage
 from CHECK.cpar.cost_analysis.pt_window_load import pt_window_load
 from CHECK.cpar.cost_analysis.pre_post_analysis import pre_post_analysis
+from CHECK.slack.slack_log import cli_output
 
 
 class DataLoadInitiator(object):
@@ -50,13 +51,14 @@ class DataLoadInitiator(object):
             self.conn.insert(release_info_df,'hfs_release_info')
 
     def load_demo_data(self):
-        print('Loading demographics data...')
+
+        cli_output('Loading demographics data...')
         self.conn.stored_procedure('pat_info_demo_load', self.release_num)
-        print('Demographics data loaded')
+        cli_output('Demographics data loaded')
 
     def load_raw_data(self):
 
-        print('Initiated process to load raw tables')
+        cli_output('Initiated process to load raw tables')
 
         if ExtractFiles().create_and_unzip_files():
             HFSLoad = HFSLoadData(self.database, self.release_num,
@@ -64,38 +66,42 @@ class DataLoadInitiator(object):
             HFSLoad.load_data()
             HFSLoad.inline_loader()
 
+        cli_output('Loaded raw tables')
+
+
     def load_raw_to_stage_data(self):
 
-        print('Loading data from raw to staging tables...')
-        print(raw_to_stage(self.release_date, self.release_num,
-                     self.database).raw_stage())
+        cli_output('Loading data from raw to staging tables...')
+        cli_output(raw_to_stage(self.release_date, self.release_num, self.database).raw_stage())
+
+
 
     def load_complete_pat_info(self):
 
-        print('Processing and loading diagnosis categorization data...')
-        print(DiagnosisMaster(self.database).load_diag_data())
-        print('Calculating and loading risk data...')
-        print(RiskCalculator(self.database, self.release_num,
+        cli_output('Processing and loading diagnosis categorization data...')
+        cli_output(DiagnosisMaster(self.database).load_diag_data())
+        cli_output('Calculating and loading risk data...')
+        cli_output(RiskCalculator(self.database, self.release_num,
                              self.release_date).main())
-        print('Loading data into pat_info_complete table...')
+        cli_output('Loading data into pat_info_complete table...')
         self.conn.stored_procedure('pat_info_demo_complete_generation',
                                    [self.release_num, self.release_date])
-        print('Data load for pat_info_complete done.')
+        cli_output('Data load for pat_info_complete done.')
 
     def analysis(self):
 
-        print('Cost analysis started...')
+        cli_output('Cost analysis started...')
         self.conn.stored_procedure('rid_cost_insert')
-        print('Loading data to pt_window')
-        print(pt_window_load(self.release_num, self.release_date,
+        cli_output('Loading data to pt_window')
+        cli_output(pt_window_load(self.release_num, self.release_date,
                              self.database).window_load())
         pp_n_months = [6,12,18]
         for pp_n_month in pp_n_months:
-            print('''Pre and post analysis for %s months period
+            cli_output('''Pre and post analysis for %s months period
                      started...''' %(pp_n_month))
             pre_post_analysis(pp_n_month, self.release_num,
                               self.database).full_run(True)
-            print('Analysis completed.')
+            cli_output('Analysis completed.')
 
 
 if __name__ == '__main__':

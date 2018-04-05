@@ -28,7 +28,7 @@ def ageGrouper(age):
         return ''
 
 def medicaidNormalizer(s):
-    s = s.replace(".0","")
+    s = int(s)
     s = str(s)
     s = s.strip()
     while len(s)<9:

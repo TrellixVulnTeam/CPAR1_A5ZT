@@ -34,12 +34,12 @@ def cpsQuarters(df):
     df.loc[df['Date'].between('2016-02-05','2016-04-07'),'Quarter'] = 'Q3'
     df.loc[df['Date'].between('2016-04-08','2016-06-21'),'Quarter'] = 'Q4'
 
-    df.loc[df['Date'].between('2016-09-04','2016-11-03'),'Quarter'] = 'Q1'
+    df.loc[df['Date'].between('2016-08-28','2016-11-03'),'Quarter'] = 'Q1'
     df.loc[df['Date'].between('2016-11-04','2017-02-02'),'Quarter'] = 'Q2'
     df.loc[df['Date'].between('2017-02-03','2017-04-06'),'Quarter'] = 'Q3'
     df.loc[df['Date'].between('2017-04-07','2017-06-20'),'Quarter'] = 'Q4'
 
-    df.loc[df['Date'].between('2017-09-03','2017-11-02'),'Quarter'] = 'Q1'
+    df.loc[df['Date'].between('2017-08-27','2017-11-02'),'Quarter'] = 'Q1'
     df.loc[df['Date'].between('2017-11-03','2018-02-01'),'Quarter'] = 'Q2'
     df.loc[df['Date'].between('2018-02-02','2018-04-12'),'Quarter'] = 'Q3'
     df.loc[df['Date'].between('2018-04-13','2018-06-18'),'Quarter'] = 'Q4'
