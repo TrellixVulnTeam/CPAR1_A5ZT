@@ -119,7 +119,7 @@ class ConsensusConnect():
         contactGeneral = partial(contactHelper.contactCategorizer, precision=False)
         alli['ContactTypeSuccess'] = alli['OutcomeStatusGBLCode'].apply(contactPrecise)
         alli['ContactSuccess'] = alli['OutcomeStatusGBLCode'].apply(contactGeneral)
-        alli['MedicaidNum'] = alli['MedicaidNum'].apply(PhoneMapHelper.medicaidNormalizer)
+        # alli['MedicaidNum'] = alli['MedicaidNum'].apply(PhoneMapHelper.medicaidNormalizer)
 
         return alli
 
