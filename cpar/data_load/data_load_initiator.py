@@ -53,7 +53,7 @@ class DataLoadInitiator(object):
     def load_demo_data(self):
 
         cli_output('Loading demographics data...')
-        self.conn.stored_procedure('pat_info_demo_load', [self.release_num])
+        self.conn.stored_procedure('pat_info_demo_load', [self.release_num,self.release_date])
         cli_output('Demographics data loaded')
 
     def load_raw_data(self):
