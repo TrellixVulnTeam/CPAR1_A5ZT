@@ -1,6 +1,6 @@
+from urllib import request, parse
+import json
 def send_message_to_slack(text):
-    from urllib import request, parse
-    import json
 
     post = {"text": "{0}".format(text)}
 
