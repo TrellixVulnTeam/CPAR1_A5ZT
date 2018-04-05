@@ -25,21 +25,20 @@ class DataLoadInitiator(object):
         self.release_num = release_num
 
     def initiate_process(self):
-
-        print('ETL process initiated...')
-
+        etl_start_string = 'ETL process initiated for ReleaseNum: {}'.format(self.release_num)
+        cli_output(etl_start_string)
         self.load_release_info()
         self.load_demo_data()
         self.load_raw_data()
         self.load_raw_to_stage_data()
         self.load_complete_pat_info()
         self.analysis()
+        cli_output("Data Load Complete!")
 
     def load_release_info(self):
 
         if(self.conn.query('''select max(ReleaseNum) as ReleaseNum from
-                              hfs_release_info
-                              ''')['ReleaseNum'][0] != self.release_num):
+                              hfs_release_info''')['ReleaseNum'][0] != self.release_num):
             release_info_df = pd.DataFrame([[self.release_num,
                                              str(self.release_num)[-2:],
                                              self.release_date,
@@ -65,16 +64,13 @@ class DataLoadInitiator(object):
                                   self.data_source)
             HFSLoad.load_data()
             HFSLoad.inline_loader()
-
-        cli_output('Loaded raw tables')
+        cli_output('load_raw_data complete')
 
 
     def load_raw_to_stage_data(self):
 
         cli_output('Loading data from raw to staging tables...')
         cli_output(raw_to_stage(self.release_date, self.release_num, self.database).raw_stage())
-
-
 
     def load_complete_pat_info(self):
 
