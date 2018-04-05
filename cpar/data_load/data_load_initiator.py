@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import fire
 import sys
 import pandas as pd
