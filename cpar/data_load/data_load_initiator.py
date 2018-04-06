@@ -26,29 +26,34 @@ class DataLoadInitiator(object):
         self.release_num = release_num
 
     def initiate_process(self):
-        etl_start_string = 'ETL process initiated for ReleaseNum: {}'.format(self.release_num)
-        cli_output(etl_start_string)
-        self.load_release_info()
-        self.load_demo_data()
-        self.load_raw_data()
-        self.load_raw_to_stage_data()
-        self.load_complete_pat_info()
-        self.analysis()
-        cli_output("Data Load Complete!")
+        # validate the release_num entered
+        last_release_num = self.conn.query('''select max(ReleaseNum) as
+                                              ReleaseNum from hfs_release_info''')['ReleaseNum'][0]
+        if last_release_num >= self.release_num:
+            cli_output('''Data for release number {} is already present in the database.'''.format(self.release_num))
+        elif (last_release_num + 1) != self.release_num:
+            cli_output('''Previous release number was {}. Hence the next release number should be {}'''.format(last_release_num,
+                                                                                                               last_release_num + 1))
+        else:
+            etl_start_string = '''ETL process initiated for ReleaseNum: {}'''.format(self.release_num)
+            cli_output(etl_start_string)
+            self.load_demo_data()
+            self.load_raw_data()
+            self.load_raw_to_stage_data()
+            self.load_complete_pat_info()
+            self.analysis()
+            self.load_release_info()
+            cli_output("Data Load Complete!")
 
     def load_release_info(self):
+        release_info_df = pd.DataFrame([[self.release_num,
+                                        str(self.release_num)[-2:],
+                                        self.release_date,
+                                        datetime.datetime.now().strftime("%Y-%m-%d")]],
+                                        columns=['ReleaseNum','Cumulative_ReleaseNum',
+                                        'HFS_Release_Date','Load_Date'])
+        self.conn.insert(release_info_df,'hfs_release_info')
 
-        if(self.conn.query('''select max(ReleaseNum) as ReleaseNum from
-                              hfs_release_info''')['ReleaseNum'][0] != self.release_num):
-            release_info_df = pd.DataFrame([[self.release_num,
-                                             str(self.release_num)[-2:],
-                                             self.release_date,
-                                             datetime.datetime.now().strftime("%Y-%m-%d")]],
-                                           columns=['ReleaseNum',
-                                                    'Cumulative_ReleaseNum',
-                                                    'HFS_Release_Date',
-                                                    'Load_Date'])
-            self.conn.insert(release_info_df,'hfs_release_info')
 
     def load_demo_data(self):
 
@@ -104,5 +109,3 @@ class DataLoadInitiator(object):
 if __name__ == '__main__':
 
      fire.Fire()
-     # print('hello, lets start!')
-     # DataLoadInitiator('234','34','CHECK_CPAR2', 'hfs').initiate_process()
