@@ -60,7 +60,7 @@ class mcn_categorization():
         ip_category.loc[emergency_ip,'Category3'] = 'EMERGENCY_IP'
 
         ip_category.loc[(ip_category['Category2']=='INPATIENT')&
-                        (ip_category['Category3']!='EMERGENCY_IP'),'Category3'] = 'INPATIENT_IP'
+                        (ip_category['Category3']!='EMERGENCY_IP'), 'Category3'] = 'INPATIENT_IP'
 
         ip_category.loc[ip_category['Category3'].isnull(),'Category3'] =  ip_category.loc[ip_category['Category3'].isnull(),'Category2'] +'_IP'
 
@@ -155,7 +155,7 @@ class mcn_categorization():
         #removes all other PlaceofServiceCd that are not blank
         match_nips = nip_merge.loc[nip_merge['Match']==1]
         nonmatch_nips = nip_merge.loc[nip_merge['Match']!=1]
-        nonmatch_nips['PlaceOfServiceCd_y'] = nonmatch_nips['PlaceOfServiceCd_y'].fillna('')
+        nonmatch_nips['PlaceOfServiceCd_y'].fillna('',inplace=True)
         nonmatch_nips = nonmatch_nips.loc[nonmatch_nips['PlaceOfServiceCd_y']=='']
         nip_merge = pd.concat([nonmatch_nips,match_nips])
 
