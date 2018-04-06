@@ -78,7 +78,7 @@ class mcn_categorization():
         ip_category = ip_category.reset_index()
         # adds visits to largest line nbr
         ip_category['Visit'] = 0
-        idx = ip_category.groupby(['RecipientID','DCN','RejectionStatusCd'])['ServiceLineNbr'].transform(max) == ip['ServiceLineNbr']
+        idx = ip_category.groupby(['RecipientID','DCN','RejectionStatusCd'])['ServiceLineNbr'].transform(max) == ip_category['ServiceLineNbr']
         ip_category.loc[idx,'Visit'] = 1
         # add encounter to max ServiceLineNbr by dcn
         ip_category['Encounter'] = 0
