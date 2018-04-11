@@ -30,10 +30,11 @@ class DataLoadInitiator(object):
         last_release_num = self.conn.query('''select max(ReleaseNum) as
                                               ReleaseNum from hfs_release_info''')['ReleaseNum'][0]
         if last_release_num >= self.release_num:
-            cli_output('''Data for release number {} is already present in the database.'''.format(self.release_num))
+            cli_output('''Data for Release Number {} is
+            already present in the database.'''.format(self.release_num))
         elif (last_release_num + 1) != self.release_num:
-            cli_output('''Previous release number was {}. Hence the next release number should be {}'''.format(last_release_num,
-                                                                                                               last_release_num + 1))
+            cli_output('''Previous Release Number was {}.
+            Hence the next release number should be {}'''.format(last_release_num, last_release_num + 1))
         else:
             etl_start_string = '''ETL process initiated for ReleaseNum: {}'''.format(self.release_num)
             cli_output(etl_start_string)
@@ -59,6 +60,11 @@ class DataLoadInitiator(object):
 
         cli_output('Loading demographics data...')
         self.conn.stored_procedure('pat_info_demo_load', [self.release_num,self.release_date])
+        count_table = conn.query("select count(*) from pat_info_demo")
+        count = count_table.values[0]
+        if count == 0:
+            raise ValueError("""No patients added into pat_info_demo: Check
+            CHECK_Enrollment_DB.tbl_population_release has release number""")
         cli_output('Demographics data loaded')
 
     def load_raw_data(self):
