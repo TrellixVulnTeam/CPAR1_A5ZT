@@ -5,6 +5,7 @@ import pandas as pd
 import time
 from CHECK.helpers import PhoneMapHelper
 from CHECK.helpers import contactHelper
+from CHECK.helpers import CPSHelper
 from CHECK.dbconnect import dbconnect
 
 class ConsensusConnect():
@@ -132,9 +133,14 @@ class ConsensusConnect():
         quite large'''
         # grade == 20 means they are part of the school only peripherally for
         # certain occupational classes but are not full time students.
-        m = "Select * FROM cps_attendance_current WHERE Student_Annual_Grade_Code != 20"
-        df = self.connect(m,db_name='Consensus_Reporting')
+        m = """SELECT * FROM Consensus_Reporting.cps_attendance_current
+        where Student_Annual_Grade_Code not in (20,'--') and Student_Annual_Grade_Code is not null;"""
+        df = self.connect(m, db_name='Consensus_Reporting')
         df['Date'] = pd.to_datetime(df['Date'])
+        CPSHelper.cpsQuarters(df)
+        df['Student_Grade_Category'] = df['Student_Annual_Grade_Code'].apply(CPSHelper.grade_group)
+        df['Student_Annual_Grade_Code'] = pd.Categorical(df['Student_Annual_Grade_Code'],
+        categories=["PE","PK","K","1",'2','3','4','5','6','7','8','9','10','11','12'],ordered=True)
 
         return df
 
@@ -274,14 +280,7 @@ class ConsensusConnect():
 
     def patientGroup(self):
         m= """
-            SELECT
-            RecipientID,
-            E4,
-            E2,
-            HE4,
-            HE2,
-            HC,
-            Program_Date
+            SELECT RecipientID, E4, E2, HE4, HE2, HC, Program_Date
             FROM tbl_population_release
             WHERE releaseNum = (SELECT MAX(ReleaseNum) FROM tbl_population_release)"""
         df =  self.connect(m,db_name="CHECK_Enrollment_DB")

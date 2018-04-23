@@ -125,7 +125,7 @@ class RiskScore(object):
     def calculate_ucsd_risk(self):
 
         self.connector = dbconnect.DatabaseConnect('CHECK_CPAR2')
-        dir = "/Users/maitraikansal/.ipython/CHECK/cpar"
+        dir = "/home/data_upload/.ipython/CHECK/cpar"
         file1 = open(dir + "/pat_info/ucsd_files/cdpsfmt1.child.txt", "r")
         self.d1 = {}
         for line in file1:

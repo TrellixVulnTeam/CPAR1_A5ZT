@@ -19,6 +19,7 @@ class mcn_categorization():
 
 
     def code_table_intializer(self):
+        '''runs queries to get service codes'''
         query = conconnect.ConsensusConnect()
         self.mcn = query.mcn_categorization_query()
         self.rv_codes = query.revenue_code_query()
@@ -59,7 +60,7 @@ class mcn_categorization():
         ip_category.loc[emergency_ip,'Category3'] = 'EMERGENCY_IP'
 
         ip_category.loc[(ip_category['Category2']=='INPATIENT')&
-                        (ip_category['Category3']!='EMERGENCY_IP'),'Category3'] = 'INPATIENT_IP'
+                        (ip_category['Category3']!='EMERGENCY_IP'), 'Category3'] = 'INPATIENT_IP'
 
         ip_category.loc[ip_category['Category3'].isnull(),'Category3'] =  ip_category.loc[ip_category['Category3'].isnull(),'Category2'] +'_IP'
 
@@ -77,12 +78,11 @@ class mcn_categorization():
         ip_category = ip_category.reset_index()
         # adds visits to largest line nbr
         ip_category['Visit'] = 0
-        ip_category.loc[ip_category.groupby(['RecipientID','DCN',
-                                             'RejectionStatusCd'])['ServiceLineNbr'].transform('idxmax'),'Visit'] = 1
+        idx = ip_category.groupby(['RecipientID','DCN','RejectionStatusCd'])['ServiceLineNbr'].transform(max) == ip_category['ServiceLineNbr']
+        ip_category.loc[idx,'Visit'] = 1
         # add encounter to max ServiceLineNbr by dcn
         ip_category['Encounter'] = 0
-        ip_category.loc[ip_category.groupby(['RecipientID','DCN',
-                                             'RejectionStatusCd'])['ServiceLineNbr'].transform('idxmax'),'Encounter'] = 1
+        ip_category.loc[idx,'Encounter'] = 1
         # inpatient day counts
         inpatient_days = ip_category.groupby(['RecipientID','DCN']).agg({'ServiceFromDt':np.min,
                                                                          'ServiceThruDt':np.max,
@@ -122,9 +122,9 @@ class mcn_categorization():
                      ['Category2','Category3','Category2Rank','Category3Rank']] = ['ANCILLARY', 'DME_OP', 9, 9]
 
         OP_HH_list = op_categorization.loc[op_categorization['Category3']=='HOME_HEALTH_OP','RevenueHCPCSCd'].unique()
-
         op_merge.loc[op_merge['RevenueHCPCSCd'].isin(OP_HH_list),
                        ['Category2','Category3','Category2Rank','Category3Rank']] = ['ANCILLARY', 'HOME_HEALTH_OP', 10, 10]
+
         op_merge = op_merge.sort_values(self.primary_keys+['Category2Rank','Category3Rank'])
         op_merge = op_merge.drop_duplicates(subset=self.primary_keys)
         op_merge['Visit'] = 1
@@ -152,11 +152,10 @@ class mcn_categorization():
         # where there is a match in PlaceOfServiceCd it becomes highest priority
         nip_merge.loc[nip_merge['PlaceOfServiceCd_x']==nip_merge['PlaceOfServiceCd_y'],'Category2Rank'] = 0
         nip_merge.loc[nip_merge['PlaceOfServiceCd_x']==nip_merge['PlaceOfServiceCd_y'],'Match'] = 1
-        # splits matching to those that did not and those that did not
-        # have a match removed all other PlaceofServiceCd to keep only the other category
+        #removes all other PlaceofServiceCd that are not blank
         match_nips = nip_merge.loc[nip_merge['Match']==1]
         nonmatch_nips = nip_merge.loc[nip_merge['Match']!=1]
-        nip_merge['PlaceOfServiceCd_y'] = nip_merge['PlaceOfServiceCd_y'].fillna('')
+        nonmatch_nips['PlaceOfServiceCd_y'].fillna('',inplace=True)
         nonmatch_nips = nonmatch_nips.loc[nonmatch_nips['PlaceOfServiceCd_y']=='']
         nip_merge = pd.concat([nonmatch_nips,match_nips])
 
@@ -174,6 +173,8 @@ class mcn_categorization():
         return nip_merge[self.output_cols]
 
     def mcn_categorization(self, mcn, bill_categorization, rv_codes, nip_codes, pc_codes, ip_codes):
+        '''Performs each of the categorizations and then adds '''
+
         op_bill_cat = self.op_categorization(mcn, bill_categorization, rv_codes)
         nip_bill_cat = self.nips_categorization(mcn, bill_categorization, nip_codes, pc_codes)
         ip_bill_cat = self.ip_categorization(mcn, ip_codes, rv_codes, pc_codes)
