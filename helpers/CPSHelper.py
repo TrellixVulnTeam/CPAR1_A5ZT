@@ -2,7 +2,7 @@ import pandas as pd
 def cpsDateCleaner(s):
     loc = s.find('/')
     s = s[:4] +'-'+ s[loc-2:loc]+'-'+s[loc+1:loc+3]
-    s = pd.to_datetime(s,format='%Y-%m-%d')
+    s = pd.to_datetime(s, format='%Y-%m-%d')
     return s
 
 def attendanceCalc(df,chronic_col=False):
