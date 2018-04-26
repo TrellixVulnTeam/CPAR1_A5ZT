@@ -24,7 +24,8 @@ class AutoScore():
             'MHSPatient':{'MHSPatient_baseline':['Tier 3 Patient Mental Health Screening',None]},
             'MHSParent':{'MHSParent_baseline':['Tier 3 Parent Mental Health Screening',None]},
             'CHAOS':{'CHAOS_baseline':['Tier 2 PROMIS Tool',None],
-                     'CHAOS_6mo':['Tier 2 PROMIS Tool - 6 Month',None]}
+                     'CHAOS_6mo':['Tier 2 PROMIS Tool - 6 Month',None],
+                      'CHAOS_12mo':['Tier 2 PROMIS Tool - 12 Month',None]}
             }
         self.assessment_data = assessment_data
         self.assessment_data.AssessmentName = self.assessment_data.AssessmentName.str.strip()

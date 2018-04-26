@@ -27,6 +27,7 @@ class pre_post_analysis():
                         and positive_duration >= {} AND ReleaseNum = {}""".format(self.pp_n_months,
                                                                                   self.pp_n_months,
                                                                                   self.release_num)
+
         pt_df = self.query.connect(pat_query, db_name=self.db_name, parse_dates=['Program_Date'])
 
         demo_df = self.query.cpar_patient_info()
@@ -43,7 +44,7 @@ class pre_post_analysis():
         return pat_info
 
 
-    def total_cost_query(self,unique_recipientID):
+    def total_cost_query(self, unique_recipientID):
         '''unique_recipientID: pd.Series of RecipientIDs
         Returns all bills for patients that had them, this will remove patients
         that don't have bills '''
@@ -56,26 +57,25 @@ class pre_post_analysis():
             ServiceFromDt,
             ServiceThruDt,
             CHECK_Category,
-            SUM(AdjustedPriceAmt) as AdjustedPriceAmt,
-            SUM(Visit) as Visit,
-            SUM(Service_Count) as ServiceCount,
-            SUM(Procedure_Count) as ProcedureCount,
-            SUM(Encounter),
-            SUM(Visit_Inpatient_Days) as VisitInpatientDays from rid_costs where RecipientID in ({})
-            and Window between {} and {}
-        GROUP BY RecipientID, DCN, CHECK_Category, ServiceFromDt""".format(unique_recipientID,
-                                                                          -self.pp_n_months,
-                                                                           self.pp_n_months)
+            AdjustedPriceAmt,
+            Visit,
+            Service_Count,
+            Procedure_Count,
+            Encounter,
+            Visit_Inpatient_Days from rid_costs where RecipientID in ({})
+            and Window between {} and {}""".format(unique_recipientID,
+                                                   -(self.pp_n_months+1),
+                                                   self.pp_n_months+1)
 
         tot_cost_df = self.query.connect(claims_query, db_name=self.db_name,
-                                    parse_dates=['ServiceFromDt','ServiceThruDt'])
+                                         parse_dates=['ServiceFromDt','ServiceThruDt'])
 
         tot_cost_df['CHECK_Category'] = tot_cost_df['CHECK_Category'].replace({'OTHER':'Other',
                                                                                'INPATIENT':'Inpatient',
                                                                                'OUTPATIENT':'Outpatient'})
         return tot_cost_df
 
-    def bill_filter(self,pat_info,pt_w_costs,unique_pt_list):
+    def bill_filter(self, pat_info, pt_costs):
         '''pat_info: pd.DataFrame that contains
         pt_w_costs_df: pd.DataFrame with columns
         pt_wo_costs: pd.Series of patients that had no costs
@@ -83,52 +83,59 @@ class pre_post_analysis():
         and categorizes the remaining bills as either pre or post from Program Date
         '''
         cost_pt_info_df = pd.merge(pat_info[['RecipientID','Program_Date',
-                                             'Min_Date','Max_Date','Duration']],pt_w_costs,how='inner')
-
+                                             'Min_Date','Max_Date','Duration']],
+                                   pt_costs, how='left', on='RecipientID')
+        cost_pt_info_df['Program_Date'] = pd.to_datetime(cost_pt_info_df['Program_Date'])
         cost_pt_info_df = cost_pt_info_df.loc[cost_pt_info_df['ServiceFromDt'].between(cost_pt_info_df['Min_Date'],
                                                                                        cost_pt_info_df['Max_Date'])]
-
-        cost_pt_info_df['Pre_Post'] = cost_pt_info_df['Program_Date']>cost_pt_info_df['ServiceFromDt']
+        # Finds pre_post and dates that are within the window
+        cost_pt_info_df['Pre_Post'] = cost_pt_info_df['Program_Date'] > cost_pt_info_df['ServiceFromDt']
         cost_pt_info_df['Pre_Post'] = cost_pt_info_df['Pre_Post'].replace({True:'Pre',False:'Post'})
+        cost_pt_info_df['Between_Date'] = cost_pt_info_df['ServiceFromDt'].between(cost_pt_info_df['Min_Date'],
+                                                                                   cost_pt_info_df['Max_Date'])
+        cost_pt_info_df = cost_pt_info_df.loc[cost_pt_info_df['Between_Date'] == True].copy()
 
-        #finds patients_w_no_bills and adds them with a Pre and post value to be pivoted
-        pt_no_bills = np.setdiff1d(unique_pt_list,cost_pt_info_df['RecipientID'])
-        pt_wo_costs = pat_info.loc[(pat_info['RecipientID'].isin(pt_no_bills)),
-                                   ['RecipientID','Program_Date','Min_Date','Max_Date','Duration']]
-        # adds a Pre and Post for patients w/o bills
-        pt_wo_costs['Pre_Post'] = 'Pre'
-        pt_wo_costs['CHECK_Category'] = 'Other'
-        cost_pt_info_df = pd.concat([cost_pt_info_df,pt_wo_costs])
-        pt_wo_costs['Pre_Post'] = 'Post'
-        cost_pt_info_df = pd.concat([cost_pt_info_df,pt_wo_costs])
-        cost_pt_info_df.fillna(0,inplace=True)
+        cost_pt_info_df['RecipientID'] = cost_pt_info_df['RecipientID'].astype('category')
+        cost_pt_info_df['CHECK_Category'] = pd.Categorical(cost_pt_info_df['CHECK_Category'],
+                                                           categories=["ED", "Outpatient",
+                                                                       "Inpatient", "Other",
+                                                                       "Pharmacy", 'Total'])
+        cost_pt_info_df['Pre_Post'] = pd.Categorical(cost_pt_info_df['Pre_Post'],
+                                                     categories=["Pre","Post"], ordered=True)
 
         return cost_pt_info_df
 
-    def patient_pivot(self, pt_cost_df, value_col):
+    def patient_pivot(self, pt_cost_df, pat_info, value_col):
         '''pt_cost_df: pd.DataFrame from self.bill_filter
            value_col: Column to contain values i.e. AdjustedPriceAmt, Visit, VisitInpatientDays
            returns pivoted data for RecipientID as index, pre and post CHECK_categories
            as columns with the value col as the summed values'''
 
-        pre_post_pivot = pd.pivot_table(pt_cost_df, index=['RecipientID','Duration','Program_Date'],
-                                        columns=['Pre_Post','CHECK_Category'], values=value_col,
-                                        aggfunc=np.sum, fill_value=0)
+        pt_cost_df = pt_cost_df.groupby(['CHECK_Category', 'Pre_Post', 'RecipientID']).sum().fillna(0)
 
-        pre_post_pivot.columns = [col[1]+"_"+col[0] for col in pre_post_pivot.columns.values]
-        pre_post_pivot.reset_index(inplace=True)
+        pt_cost_df = pt_cost_df[['AdjustedPriceAmt','Visit','Service_Count',
+                                 'Procedure_Count','Encounter','Visit_Inpatient_Days']]
+        pt_cost_df.reset_index(inplace=True)
 
-        pre_cols = ['ED_Pre', 'Inpatient_Pre', 'Other_Pre', 'Outpatient_Pre', 'Pharmacy_Pre']
-        post_cols = ['ED_Post', 'Inpatient_Post', 'Other_Post', 'Outpatient_Post', 'Pharmacy_Post']
+        pre_post_pivot = pd.pivot_table(pt_cost_df, index=['RecipientID'],
+                                        columns=['Pre_Post','CHECK_Category'],
+                                        values=value_col, aggfunc='sum')
 
-        pre_post_pivot['Total_Pre'] = pre_post_pivot[pre_cols].sum(axis=1)
-        pre_post_pivot['Total_Post'] = pre_post_pivot[post_cols].sum(axis=1)
+        pre_post_pivot[('Pre','Total')] = pre_post_pivot['Pre'].sum(axis=1)
+        pre_post_pivot[('Post','Total')] = pre_post_pivot['Post'].sum(axis=1)
+
+        pre_post_pivot.columns = [i[1]+"_"+i[0] for i in pre_post_pivot.columns]
+
+        pre_post_pivot = pd.merge(pre_post_pivot, pat_info,
+                                  how='right', left_index=True,
+                                  right_on='RecipientID').fillna(0)
+
         pre_post_pivot['Aggregation_Type'] = value_col
 
         individual_columns = ['RecipientID','Duration','Aggregation_Type']
         # round to 2 decimal places
         pre_post_pivot[self.cost_columns] = pre_post_pivot[self.cost_columns].round(2)
-        pre_post_pivot = pre_post_pivot[individual_columns+self.cost_columns]
+        pre_post_pivot = pre_post_pivot[individual_columns + self.cost_columns]
         pre_post_pivot['ReleaseNum'] = self.release_num
         return pre_post_pivot
 
@@ -164,7 +171,7 @@ class pre_post_analysis():
         group_df['ReleaseNum'] = self.release_num
         return group_df
 
-    def full_run(self,to_sql):
+    def full_run(self, to_sql):
         '''Runs the pre-post analysis
            to_sql == True will post data to MySQL DB
            Runs a specific groups and iterates through entire patient population that
@@ -177,17 +184,16 @@ class pre_post_analysis():
                          'Prematurity','Brain_Injury','Epilepsy','Diagnosis_Category','Risk',
                          'Age_Cat','Age','Gender','E2','E4','HC','HE2','HE4','Pregnancy','ReleaseNum']
 
-        jumper = 3000
-        agg_columns = ['AdjustedPriceAmt','Visit','VisitInpatientDays']
+
+        agg_columns = ['AdjustedPriceAmt','Visit','Visit_Inpatient_Days']
         pat_piv_df = []
         #iterates through patients in chunks and aggregation types
-        for x in range(0,len(unique_recipientID),jumper):
-            temp_unique_rins = unique_recipientID[x:x+jumper]
-            pt_costs_df = self.total_cost_query(temp_unique_rins)
-            pt_w_costs_filtered_df = self.bill_filter(pat_info, pt_costs_df, temp_unique_rins)
-            for agg_type in agg_columns:
-                pre_post_pivot = self.patient_pivot(pt_w_costs_filtered_df,agg_type)
-                pat_piv_df.append(pre_post_pivot)
+        pt_costs_df = self.total_cost_query(pat_info['RecipientID'])
+        filtered_costs = self.bill_filter(pat_info, pt_costs_df)
+
+        for agg_type in agg_columns:
+            pre_post_pivot = self.patient_pivot(filtered_costs, pat_info, agg_type)
+            pat_piv_df.append(pre_post_pivot)
 
         pat_piv_df = pd.concat(pat_piv_df)
 
