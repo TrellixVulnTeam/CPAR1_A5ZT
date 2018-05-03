@@ -60,7 +60,7 @@ class DataLoadInitiator(object):
 
         cli_output('Loading demographics data...')
         self.conn.stored_procedure('pat_info_demo_load', [self.release_num,self.release_date])
-        count_table = conn.query("select count(*) from pat_info_demo")
+        count_table = self.conn.query("select count(*) from pat_info_demo")
         count = count_table.values[0]
         if count == 0:
             raise ValueError("""No patients added into pat_info_demo: Check
