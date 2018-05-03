@@ -19,7 +19,7 @@ class DiagnosisMaster(object):
                                         'pat_info_dx_pregnancy',
                                         'pat_info_dx_primary']
 
-        self.dx_codes_query = """SELECT p.RecipientID,
+        self.dx_codes_query = """SELECT p.RecipientID, p.Enrollment_Age,
                                  if(d.RecipientID is null,'0',
                                  GROUP_CONCAT(Distinct DiagCd separator ','))
                                  ICD_List
@@ -96,16 +96,19 @@ class DiagnosisMaster(object):
                 dx_codes.loc[:, 'SCD_Claims'] = dx_codes.loc[:, 'SCD']
                 dx_codes.loc[dx_codes['RecipientID'].isin(pat_scd_clams_info[
                                                     'RecipientID']), 'SCD'] = 1
+                dx_codes.loc[dx_codes['Enrollment_Age'] > 3, 'Prematurity'] = 0
                 dx_codes['Diagnosis_Category'] = dx_codes.apply(
                                                 self.diagnosisCategory, axis=1)
+
             if table == 'dx_code_inc_exc_pregnancy':
                 dx_codes.loc[dx_codes.sum(axis=1) > 0, 'Preg_Flag'] = 1
                 dx_codes['Preg_Flag'].fillna(0, inplace=True)
             # insert into database
-            self.connector.replace(dx_codes.drop('ICD_Codes_List', axis=1),
-                                   self.table_diagnosis_masters[index])
+            self.connector.replace(dx_codes.drop(['ICD_Codes_List',
+                                                   'Enrollment_Age'], axis=1),
+                                    self.table_diagnosis_masters[index])
             # drop the columns
-            dx_codes = dx_codes.drop(dx_codes.iloc[:, 3:], axis=1)
+            dx_codes = dx_codes.drop(dx_codes.iloc[:, 4:], axis=1)
             index += 1
 
         return 'Diagnosis Categorization completed'

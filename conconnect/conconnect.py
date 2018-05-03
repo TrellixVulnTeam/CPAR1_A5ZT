@@ -6,6 +6,7 @@ import time
 from CHECK.helpers import PhoneMapHelper
 from CHECK.helpers import contactHelper
 from CHECK.helpers import CPSHelper
+from CHECK.helpers import patHelper
 from CHECK.dbconnect import dbconnect
 
 class ConsensusConnect():
@@ -199,11 +200,7 @@ class ConsensusConnect():
             FROM
                 pat_info_complete"""
         df =  self.connect(m,db_name="CHECK_CPAR2")
-        df.loc[df['E2']==1,'Population_Type'] = 'Engaged'
-        df.loc[df['E4']==1,'Population_Type'] = 'Enrolled'
-        df.loc[df['HC']==1,'Population_Type'] = 'Harmony_Control'
-        df.loc[df['HE2']==1,'Population_Type'] = 'Harmony_Engaged'
-        df.loc[df['HE4']==1,'Population_Type'] = 'Harmony_Enrolled'
+        df = patHelper.patGroup(df)
         df['Program_Date'] = pd.to_datetime(df['Program_Date'])
         df['DOB'] = pd.to_datetime(df['DOB'])
         # Makes new column that gives us a singular columns for risk and age
