@@ -28,13 +28,13 @@ class DataLoadInitiator(object):
     def initiate_process(self):
         # validate the release_num entered
         last_release_num = self.conn.query('''select max(ReleaseNum) as
-                                              ReleaseNum from hfs_release_info''')['ReleaseNum'][0]
+                                              ReleaseNum from hfs_release_info
+                                              ''')['ReleaseNum'][0]
         if last_release_num >= self.release_num:
-            cli_output('''Data for Release Number {} is
-            already present in the database.'''.format(self.release_num))
+            cli_output('''Data for release number {} is already present in the database.'''.format(self.release_num))
         elif (last_release_num + 1) != self.release_num:
-            cli_output('''Previous Release Number was {}.
-            Hence the next release number should be {}'''.format(last_release_num, last_release_num + 1))
+            cli_output('''Previous release number was {}. Hence the next release number should be {}'''.format(last_release_num,
+                                                                                                               last_release_num + 1))
         else:
             etl_start_string = '''ETL process initiated for ReleaseNum: {}'''.format(self.release_num)
             cli_output(etl_start_string)
@@ -48,23 +48,20 @@ class DataLoadInitiator(object):
 
     def load_release_info(self):
         release_info_df = pd.DataFrame([[self.release_num,
-                                        str(self.release_num)[-2:],
-                                        self.release_date,
-                                        datetime.datetime.now().strftime("%Y-%m-%d")]],
-                                        columns=['ReleaseNum','Cumulative_ReleaseNum',
-                                        'HFS_Release_Date','Load_Date'])
+                                             str(self.release_num)[-2:],
+                                             self.release_date,
+                                             datetime.datetime.now().strftime("%Y-%m-%d")]],
+                                           columns=['ReleaseNum',
+                                                    'Cumulative_ReleaseNum',
+                                                    'HFS_Release_Date',
+                                                    'Load_Date'])
         self.conn.insert(release_info_df,'hfs_release_info')
-
 
     def load_demo_data(self):
 
         cli_output('Loading demographics data...')
-        self.conn.stored_procedure('pat_info_demo_load', [self.release_num,self.release_date])
-        count_table = self.conn.query("select count(*) from pat_info_demo")
-        count = count_table.values[0]
-        if count == 0:
-            raise ValueError("""No patients added into pat_info_demo: Check
-            CHECK_Enrollment_DB.tbl_population_release has release number""")
+        self.conn.stored_procedure('pat_info_demo_load', ['3024',datetime.datetime.now().strftime("%Y-%m-%d")])
+        # self.conn.stored_procedure('pat_info_demo_load', [self.release_num,self.release_date])
         cli_output('Demographics data loaded')
 
     def load_raw_data(self):
@@ -89,8 +86,15 @@ class DataLoadInitiator(object):
         cli_output('Processing and loading diagnosis categorization data...')
         cli_output(DiagnosisMaster(self.database).load_diag_data())
         cli_output('Calculating and loading risk data...')
-        cli_output(RiskCalculator(self.database, self.release_num,
-                             self.release_date).main())
+
+        # Risk Calculation
+        risk_cal = RiskCalculator(self.database, self.release_num,
+                             self.release_date)
+        # for current release
+        cli_output(risk_cal.cal_current_risk())
+        # for all releases
+        cli_output(risk_cal.cal_all_release_risk())
+
         cli_output('Loading data into pat_info_complete table...')
         self.conn.stored_procedure('pat_info_demo_complete_generation',
                                    [self.release_num, self.release_date])
