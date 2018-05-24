@@ -12,7 +12,7 @@ def table_count_maker(df,groupby_list,count_value,presentation=False):
     To Do: It is currently built to only aggregate a list of length 2'''
 
     df_count = df.groupby(groupby_list,as_index=False).count()
-    df_count = df_count.pivot(columns=groupby_list[0],index=groupby_list[1],values=count_value)
+    df_count = df_count.pivot(columns=groupby_list[0], index=groupby_list[1], values=count_value)
     #selects all values that will be counted
     vals = df[groupby_list[0]].unique()
     df_count['Total'] = df_count[vals].sum(axis=1)
@@ -37,8 +37,11 @@ def table_count_maker(df,groupby_list,count_value,presentation=False):
         return df_count[present_cols]
     return df_count
 
-def table_description_maker(df,groupby_list,desc_value,presentation=False):
-    '''Returns a df that describes the average and std of a given group'''
+def table_description_maker(df, groupby_list, desc_value, desc_type, format_type="{:.2f}" ,presentation=False):
+    '''Returns a df that describes the df
+    desc_type=mean returns average and std of a given group
+    desc_type=median returns median and 75 and 25th percentile of a given group'''
+
     vals = list(df[groupby_list[0]].unique())
     vals.append('Total')
     df_desc = df.groupby(groupby_list).describe()
@@ -49,11 +52,24 @@ def table_description_maker(df,groupby_list,desc_value,presentation=False):
         df_desc[('Total',i)] = total_pop[i]
 
     for col in df_desc.columns:
-        df_desc[col] = df_desc[col].apply(lambda x: "{:.2f}".format(x))
+        df_desc[col] = df_desc[col].apply(lambda x: format_type.format(x))
 
-    for i in vals:
-        df_desc[('Final',i)] = (str(df_desc[(i,'mean')][0])+' ('+
-                                        str(df_desc[(i,'std')][0])+')')
+    if desc_type == 'mean':
+        for i in vals:
+            df_desc[('Final',i)] = (str(df_desc[(i,'mean')][0])+' ('+
+                                            str(df_desc[(i,'std')][0])+')')
+    if desc_type == 'median':
+
+        for i in vals:
+
+            percentile_25 = df_desc[(i,'25%')][0]
+            percentile_75 = df_desc[(i,'75%')][0]
+            output = "{} ({}, {})".format(df_desc[(i,'50%')][0], percentile_25, percentile_75)
+
+            df_desc[('Final',i)] = output
+
+    df_desc.index = df_desc.index.values + ' ' +desc_type
     if presentation == True:
         return df_desc['Final']
+
     return df_desc
