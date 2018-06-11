@@ -87,8 +87,7 @@ class DataLoadInitiator(object):
         cli_output('Calculating and loading risk data...')
 
         # Risk Calculation
-        risk_cal = RiskCalculator(self.database, self.release_num,
-                             self.release_date)
+        risk_cal = RiskCalculator(self.database, self.release_num, self.release_date)
         # for current release
         cli_output(risk_cal.cal_current_risk())
         # for all releases

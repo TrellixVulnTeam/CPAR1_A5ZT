@@ -8,7 +8,7 @@ class DiagnosisMaster(object):
 
     def __init__(self, database='CHECK_CPAR2'):
 
-        dx_ratio = {'SCD':.75}
+        self.dx_ratio = {'SCD':.75}
 
         self.connector = dbconnect.DatabaseConnect(database)
 
@@ -69,7 +69,7 @@ class DiagnosisMaster(object):
 
         return rid_list
 
-    def dx_table_iterator(self, inc_exc_table, pat_info):
+    def dx_table_iterator(self, inc_exc_table, dx_codes, pat_info):
         '''for a diagnosis family (mh, pregnancy, primary) iterates through all diagnosis
         categories and adds column for each dx subgroup 1 being inclusion 0 being no diagnosis'''
 
@@ -78,8 +78,8 @@ class DiagnosisMaster(object):
 
         for dx in dx_list:
             dx_inc_exc_table = inc_exc_table.loc[inc_exc_table['Group_Name']==dx]
-            if dx in dx_ratio:
-                ratio = dx_ratio[dx]
+            if dx in self.dx_ratio:
+                ratio = self.dx_ratio[dx]
             else:
                 ratio = 1
 
@@ -93,14 +93,14 @@ class DiagnosisMaster(object):
     def primary_dx(self, dx_codes, pat_info):
         '''Prematurity must be less age 3 at Enrollment to be considered Premature'''
         inc_exc_table = self.connector.query( "SELECT * FROM dx_code_inc_exc_primary_diagnosis;")
-        pt_dx_table = self.dx_table_iterator(inc_exc_table, pat_info)
+        pt_dx_table = self.dx_table_iterator(inc_exc_table, dx_codes, pat_info)
         pt_dx_table.loc[pt_dx_table['Enrollment_Age'] > 3, 'Prematurity'] = 0
         pt_dx_table['Diagnosis_Category'] = pt_dx_table.apply(self.diagnosis_category, axis=1)
         return pt_dx_table
 
     def mh_dx(self, dx_codes, pat_info):
         inc_exc_table = self.connector.query( "SELECT * FROM dx_code_inc_exc_mental_health;")
-        pt_dx_table = self.dx_table_iterator(inc_exc_table, pat_info)
+        pt_dx_table = self.dx_table_iterator(inc_exc_table, dx_codes, pat_info)
         return pt_dx_table
 
     def preg_dx(self, dx_codes, pat_info):
@@ -108,7 +108,7 @@ class DiagnosisMaster(object):
         Should only occur for Females over age 10 at time of enrollment'''
 
         inc_exc_table = self.connector.query( "SELECT * FROM dx_code_inc_exc_pregnancy;")
-        pt_dx_table = self.dx_table_iterator(inc_exc_table, pat_info)
+        pt_dx_table = self.dx_table_iterator(inc_exc_table, dx_codes, pat_info)
 
         pt_dx_table.loc[(pt_dx_table[['Antenatal_care','Delivery','Abortive']].sum(axis=1) > 0) &
                      (pt_dx_table['Enrollment_Age']>10) & (pt_dx_table['Gender']=='Female'), 'Preg_Flag'] = 1
