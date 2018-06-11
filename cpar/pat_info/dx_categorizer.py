@@ -8,41 +8,27 @@ class DiagnosisMaster(object):
 
     def __init__(self, database='CHECK_CPAR2'):
 
+        dx_ratio = {'SCD':.75}
+
         self.connector = dbconnect.DatabaseConnect(database)
 
-        self.table_diagnosis_masters = ['pat_info_dx_mental_health',
+        self.diagnosis_tables = ['pat_info_dx_mental_health',
                                         'pat_info_dx_pregnancy',
                                         'pat_info_dx_primary']
 
-        self.dx_codes_query = """SELECT p.RecipientID, p.Enrollment_Age, p.Gender,
+        self.pat_info_query = """SELECT p.RecipientID, p.Enrollment_Age, p.Gender,
                                  if(d.RecipientID is null,'0',
-                                 GROUP_CONCAT(Distinct DiagCd separator ','))
-                                 ICD_List
+                                 GROUP_CONCAT(Distinct DiagCd separator ',')) ICD_List
                                  FROM pat_info_demo p left join
                                  tsc_hfs_diagnosis d
                                  on p.RecipientID = d.RecipientID
                                  group by RecipientID"""
 
-        self.primary_diag_scd_claims_query = """SELECT u.RecipientID,
-                    '1' as SCD FROM (SELECT x.RecipientID, MAX(CASE
-                    WHEN x.INCL_EXCL = 'I' THEN x.total ELSE 0
-                    END) AS INCL, MAX(CASE WHEN x.INCL_EXCL = 'E'
-                    THEN x.total ELSE 0 END) AS EXCL
-                    FROM
-                    (SELECT RecipientID, INCL_EXCL, COUNT(*) AS total
-                    FROM tsc_hfs_diagnosis d
-                    JOIN dx_code_inc_exc_primary_diagnosis ie
-                    ON d.DiagCd = ie.DX_CODE
-                    WHERE Group_name = 'SCD' GROUP BY
-                    RecipientID , INCL_EXCL) AS x
-                    GROUP BY x.RecipientID) AS u
-                    WHERE (u.INCL / u.EXCL) <> 0.0
-                    AND (u.INCL / u.EXCL) IS NOT NULL
-                    AND (u.INCL / u.EXCL) >= 3 ;"""
+        self.dx_code_query = '''SELECT RecipientID, DiagCd, count(*) ICD_Count
+        from tsc_hfs_diagnosis group by RecipientID, DiagCd'''
 
-    def diagnosisCategory(self, df):
-        '''function to deduce diagnosis category:
-            uses hierarchial diagnosis'''
+    def diagnosis_category(self, df):
+        '''Categorizes primary diagnosis into a single diagnosis column'''
         if df['ICD_List'] == '0':
             return "NA"
         if df['SCD'] == 1:
@@ -60,70 +46,97 @@ class DiagnosisMaster(object):
         else:
             return "Other"
 
-    def inc_exc(self, dx_codes, inc_exc_codes):
+    def inclusion_exclusion_diagnoser(self, pt_dx_codes, dx_inc_exc_table, inc_exc_ratio=1, min_inc_count=1):
+        '''
+        pt_dx_codes: pd.DataFrame contains counts of all ICD diagnosis that the patient has recorded
+        dx_inc_exc_table: pd.DataFrame that contains the inclusion and exclusion codes for a single diagnosis
+        inc_exc_ratio: inclusion to exclusion ratio necessary to be diagnosed
 
-        for dx in inc_exc_codes['Group_Name'].unique():
+        returns a list of patients that met the inclusion exclusion criteria for a diagnosis
+        '''
 
-            inc_codes = set(inc_exc_codes.loc[
-                             (inc_exc_codes['Group_Name'] == dx)
-                             & (inc_exc_codes['Incl_Excl'] == 'I'),
-                             'Dx_Code'])
+        pt_dx_codes_merge = pd.merge(pt_dx_codes, dx_inc_exc_table, how='inner',
+                                     right_on='Dx_Code', left_on='DiagCd')
 
-            exc_codes = set(inc_exc_codes.loc[
-                                  (inc_exc_codes['Group_Name'] == dx)
-                                  & (inc_exc_codes['Incl_Excl'] == 'E'),
-                                  'Dx_Code'])
+        inc_exc_rids = pd.pivot_table(pt_dx_codes_merge, index='RecipientID',
+                                      columns='Incl_Excl', values='ICD_Count',
+                                      aggfunc='sum', fill_value=0)
+        if 'E' not in inc_exc_rids.columns:
+            inc_exc_rids['E'] = 0
+        inc_exc_rids['Inc_Exc_Ratio'] = inc_exc_rids['I'] / (inc_exc_rids['E'] + inc_exc_rids['I'])
+        rid_list = inc_exc_rids.loc[(inc_exc_rids['Inc_Exc_Ratio']>=inc_exc_ratio)&
+                                    (inc_exc_rids['I']>=min_inc_count)].index
 
-            dx_codes[dx] = dx_codes['ICD_Codes_List'].apply(lambda x: 1 if
-            (len(set(x) & inc_codes) > 0) & (len(set(x) & exc_codes) == 0) else 0)
+        return rid_list
 
-        return dx_codes
+    def dx_table_iterator(self, inc_exc_table, pat_info):
+        '''for a diagnosis family (mh, pregnancy, primary) iterates through all diagnosis
+        categories and adds column for each dx subgroup 1 being inclusion 0 being no diagnosis'''
 
-    def preg_dx(self, dx_codes):
+        pat_info_cp = pat_info.copy()
+        dx_list = inc_exc_table['Group_Name'].unique()
 
-        inc_exc_tables = self.connector.query( "SELECT * FROM dx_code_inc_exc_pregnancy;")
-        dx_codes = self.inc_exc(dx_codes, inc_exc_tables)
-        dx_codes.loc[(dx_codes[['Antenatal_care','Delivery','Abortive']].sum(axis=1) > 0) &
-                     (dx_codes['Enrollment_Age']>10) & (dx_codes['Gender']=='Female'), 'Preg_Flag'] = 1
-        dx_codes.loc[dx_codes[['Antenatal_care','Delivery','Abortive']].sum(axis=1) == 0, 'Preg_Flag'] = 0
+        for dx in dx_list:
+            dx_inc_exc_table = inc_exc_table.loc[inc_exc_table['Group_Name']==dx]
+            if dx in dx_ratio:
+                ratio = dx_ratio[dx]
+            else:
+                ratio = 1
 
-        return dx_codes
+            rid_list = self.inclusion_exclusion_diagnoser(dx_codes, dx_inc_exc_table, ratio)
+            pat_info_cp.loc[pat_info_cp['RecipientID'].isin(rid_list), dx] = 1
+            pat_info_cp[dx].fillna(0, inplace=True)
 
-    def primary_dx(self, dx_codes):
+        pat_info_cp[dx_list] = pat_info_cp[dx_list].astype(int)
+        return pat_info_cp
 
-        inc_exc_tables = self.connector.query( "SELECT * FROM dx_code_inc_exc_primary_diagnosis;")
-        dx_codes = self.inc_exc(dx_codes, inc_exc_tables)
+    def primary_dx(self, dx_codes, pat_info):
+        '''Prematurity must be less age 3 at Enrollment to be considered Premature'''
+        inc_exc_table = self.connector.query( "SELECT * FROM dx_code_inc_exc_primary_diagnosis;")
+        pt_dx_table = self.dx_table_iterator(inc_exc_table, pat_info)
+        pt_dx_table.loc[pt_dx_table['Enrollment_Age'] > 3, 'Prematurity'] = 0
+        pt_dx_table['Diagnosis_Category'] = pt_dx_table.apply(self.diagnosis_category, axis=1)
+        return pt_dx_table
 
-        pat_scd_clams_info = self.connector.query( self.primary_diag_scd_claims_query)
-        dx_codes.loc[:, 'SCD_Claims'] = dx_codes.loc[:, 'SCD']
-        dx_codes.loc[dx_codes['RecipientID'].isin(pat_scd_clams_info[
-                                            'RecipientID']), 'SCD'] = 1
-        dx_codes.loc[dx_codes['Enrollment_Age'] > 3, 'Prematurity'] = 0
-        dx_codes['Diagnosis_Category'] = dx_codes.apply(self.diagnosisCategory, axis=1)
+    def mh_dx(self, dx_codes, pat_info):
+        inc_exc_table = self.connector.query( "SELECT * FROM dx_code_inc_exc_mental_health;")
+        pt_dx_table = self.dx_table_iterator(inc_exc_table, pat_info)
+        return pt_dx_table
 
-        return dx_codes
+    def preg_dx(self, dx_codes, pat_info):
+        '''Determines if pregnancy icd code was ever given to patient
+        Should only occur for Females over age 10 at time of enrollment'''
 
-    def mh_dx(self, dx_codes):
-        inc_exc_tables = self.connector.query( "SELECT * FROM dx_code_inc_exc_mental_health;")
-        dx_codes = self.inc_exc(dx_codes, inc_exc_tables)
-        return dx_codes
+        inc_exc_table = self.connector.query( "SELECT * FROM dx_code_inc_exc_pregnancy;")
+        pt_dx_table = self.dx_table_iterator(inc_exc_table, pat_info)
 
-    def load_diag_data(self):
-        dx_codes = self.connector.query(self.dx_codes_query)
-        dx_codes['ICD_Codes_List'] = dx_codes['ICD_List'].str.split(',')
+        pt_dx_table.loc[(pt_dx_table[['Antenatal_care','Delivery','Abortive']].sum(axis=1) > 0) &
+                     (pt_dx_table['Enrollment_Age']>10) & (pt_dx_table['Gender']=='Female'), 'Preg_Flag'] = 1
+        pt_dx_table.loc[pt_dx_table[['Antenatal_care','Delivery','Abortive']].sum(axis=1) == 0, 'Preg_Flag'] = 0
 
-        for table in self.table_diagnosis_masters:
+        return pt_dx_table
+
+    def load_diag_data(self, to_sql=True):
+        '''Calculates for all of the diagnosis tables and if to_sql is True loads them into the
+        database'''
+        dx_dfs = {}
+        dx_codes = self.connector.query(self.dx_code_query)
+        pat_info = self.connector.query(self.pat_info_query)
+
+        for table in self.diagnosis_tables:
             if table == 'pat_info_dx_primary':
-                dx_codes = self.primary_dx(dx_codes)
-            if table == 'pat_info_dx_pregnancy':
-                dx_codes = self.preg_dx(dx_codes)
-            if table == 'pat_info_dx_mental_health':
-                dx_codes = self.mh_dx(dx_codes)
+                pat_dx_table = self.primary_dx(dx_codes, pat_info)
+            elif table == 'pat_info_dx_pregnancy':
+                pat_dx_table = self.preg_dx(dx_codes, pat_info)
+            elif table == 'pat_info_dx_mental_health':
+                pat_dx_table = self.mh_dx(dx_codes, pat_info)
 
-            self.connector.replace(dx_codes.drop(['ICD_Codes_List',
-                                                   'Enrollment_Age','Gender'],
-                                                 axis=1), table)
+            dx_dfs[table] = pat_dx_table
 
-            dx_codes = dx_codes.drop(dx_codes.iloc[:, 5:], axis=1)
-
-        return 'Diagnosis Categorization completed'
+        if to_sql == True:
+            for table in dx_dfs.keys():
+                self.connector.replace(dx_dfs[table].drop(['Enrollment_Age','Gender'], axis=1), table)
+                print("{} diagnosis table replaced".format(table))
+            return 'Diagnosis Categorization completed'
+        else:
+            return dx_dfs

@@ -95,7 +95,7 @@ class mcn_categorization():
         return ip_category[self.output_cols]
 
 
-    def op_categorization(self,mcn,bill_categorization,rv_codes):
+    def op_categorization(self, mcn, bill_categorization, rv_codes):
 
         op_categorization = bill_categorization.loc[bill_categorization['Category1']=='OUTPATIENT']
         op_bills = mcn.loc[mcn['RecordIDCd']=='O']
