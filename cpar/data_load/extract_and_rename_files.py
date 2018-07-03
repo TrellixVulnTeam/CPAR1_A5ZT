@@ -15,9 +15,10 @@ class ExtractFiles(object):
 
     def create_and_unzip_files(self):
 
-        if os.path.exists(self.output_file_path) and len(
-        [i for i in os.listdir(self.output_file_path)
-         if not i.startswith('.')]) == 13:
+        path_exists = os.path.exists(self.output_file_path)
+        file_count = len([i for i in os.listdir(self.output_file_path) if not i.startswith('.')])
+
+        if path_exists and file_count == 13:
             print('Files already present in output_data folder')
             return True
         else:
@@ -39,8 +40,7 @@ class ExtractFiles(object):
                      if i.endswith('CCCDMonthlyUICheck.zip')]
 
         if len(zip_files) != 1:
-            print("Zip files not present in the current directory ",
-                  self.current_dir)
+            print("Zip files not present in the current directory ", self.current_dir)
             return False
         else:
             self.file_name = zip_files[0]
@@ -65,8 +65,7 @@ class ExtractFiles(object):
         print('extracting files...')
 
         # unzip the file from source folder to output folder
-        file_unzipped = zipfile.ZipFile(self.source_file_path + self.file_name,
-                                        'r')
+        file_unzipped = zipfile.ZipFile(self.source_file_path + self.file_name, 'r')
         file_unzipped.setpassword(self._sec.getZip())
         file_unzipped.extractall(self.output_file_path)
         file_unzipped.close()

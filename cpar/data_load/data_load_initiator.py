@@ -68,8 +68,7 @@ class DataLoadInitiator(object):
         cli_output('Initiated process to load raw tables')
 
         if ExtractFiles().create_and_unzip_files():
-            HFSLoad = HFSLoadData(self.database, self.release_num,
-                                  self.data_source)
+            HFSLoad = HFSLoadData(self.database, self.release_num, self.data_source)
             HFSLoad.load_data()
             HFSLoad.inline_loader()
         cli_output('load_raw_data complete')

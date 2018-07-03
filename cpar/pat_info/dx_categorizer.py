@@ -8,6 +8,7 @@ class DiagnosisMaster(object):
 
     def __init__(self, database='CHECK_CPAR2'):
 
+        #qualifying ratio i,e, 3 inclusion codes for every 1 exclusion code to be diagnosed
         self.dx_ratio = {'SCD':.75}
 
         self.connector = dbconnect.DatabaseConnect(database)
