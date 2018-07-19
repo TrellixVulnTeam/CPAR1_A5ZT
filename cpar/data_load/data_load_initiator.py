@@ -16,8 +16,7 @@ from CHECK.slack.slack_log import cli_output
 
 class DataLoadInitiator(object):
 
-    def __init__(self, release_num, release_date, database='CHECK_CPAR2',
-                 data_source='HFS'):
+    def __init__(self, release_num, release_date, database='CHECK_CPAR2', data_source='HFS'):
 
         self.release_date = release_date
         self.database = database

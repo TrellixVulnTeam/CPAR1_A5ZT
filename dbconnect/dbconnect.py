@@ -86,14 +86,16 @@ class DatabaseConnect():
         except:
             raise Exception
 
-    def inline_import(self,sql_str,file_path):
+    def inline_import(self, sql_str, file_path):
         '''sql_str: (string) contains the inline file instructions
            file_path: (string) path to file to verify counts'''
         connection = MySQLdb.Connect(host=self.hostname, user=self.username, passwd=self.password, db=self.database)
         cursor = connection.cursor()
         n_rows = cursor.execute(sql_str)
+        cursor.close()
         connection.commit()
         connection.close()
         if file_path != None:
             file_rows = sum([1 for i in open(file_path)])
             return n_rows, file_rows
+        return n_rows

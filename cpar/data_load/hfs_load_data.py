@@ -377,19 +377,12 @@ class HFSLoadData(object):
             'file_path': '{path}/{revenue}'.format(**self.info_dict),
             'table_name': 'trc_hfs_revenue_codes'}
 
-        mysql_script_name = '''sql_scripts/Load_Data_to_DB_ReleaseNum_
-                               {ReleaseNum}.sql'''.format(**self.info_dict)
-        insert_info_script_name = '''sql_scripts/Load_info_
-                                     {ReleaseNum}.sql'''.format(**self.
-                                                                info_dict)
-        delete_info_script_name = '''sql_scripts/Delete_Release_Info_
-                                     {ReleaseNum}.sql'''.format(**self.
-                                                                info_dict)
+        mysql_script_name = '''sql_scripts/Load_Data_to_DB_ReleaseNum_{ReleaseNum}.sql'''.format(**self.info_dict)
+        insert_info_script_name = '''sql_scripts/Load_info_{ReleaseNum}.sql'''.format(**self.info_dict)
+        delete_info_script_name = '''sql_scripts/Delete_Release_Info_{ReleaseNum}.sql'''.format(**self.info_dict)
 
-        self.renew_script(insert_info_script_name, "USE {db};\n"
-                          .format(**self.info_dict))
-        self.renew_script(delete_info_script_name, "USE {db};\n"
-                          .format(**self.info_dict))
+        self.renew_script(insert_info_script_name, "USE {db};\n".format(**self.info_dict))
+        self.renew_script(delete_info_script_name, "USE {db};\n".format(**self.info_dict))
         self.renew_script(mysql_script_name)
 
         for key in self.load_inline_dict.keys():
@@ -411,8 +404,7 @@ class HFSLoadData(object):
 
             self.load_inline_dict[key]['sql_insert'] = insert_str
             self.load_inline_dict[key]['sql_delete'] = delete_str
-            self.line_append(mysql_script_name,
-                             self.load_inline_dict[key]['inline_load'])
+            self.line_append(mysql_script_name, self.load_inline_dict[key]['inline_load'])
             self.line_append(insert_info_script_name, insert_str)
             self.line_append(delete_info_script_name, delete_str)
 
@@ -431,17 +423,14 @@ class HFSLoadData(object):
             table = self.load_inline_dict[key]['table_name']
             inline_str = self.load_inline_dict[key]['inline_load']
             file_path = self.load_inline_dict[key]['file_path']
-            load_info_tuple = self.connection.inline_import(inline_str,
-                                                            file_path)
+            load_info_tuple = self.connection.inline_import(inline_str, file_path)
             if load_info_tuple[0] != load_info_tuple[1]:
                 print('\n{}: Did not load all rows!\n'.format(table))
-                self.connection.query(self.load_inline_dict[key]['sql_delete'],
-                                      df_flag=False)
+                self.connection.query(self.load_inline_dict[key]['sql_delete'], df_flag=False)
                 print('Deleting rows from DB')
             else:
                 counter += 1
-                print('{}: Load completed correctly n={}'
-                      .format(table, load_info_tuple[0]))
+                print('{}: Load completed correctly n={}'.format(table, load_info_tuple[0]))
                 # Because we have row counts from the query
                 # we can perform the insert into hfs_load_count_info
                 # faster with the following query, over writes the
@@ -452,8 +441,7 @@ class HFSLoadData(object):
                   Table_Name, {ReleaseNum} as ReleaseNum, {Cumulative_ReleaseNum} as
                    Cumulative_ReleaseNum,'{load_date}' as
                   Load_Date, {row_count} as Count;""".format(table=table,
-                                                             row_count=
-                                                             load_info_tuple[0]
+                                                             row_count=load_info_tuple[0]
                                                              , **self.info_dict)
         if counter == table_count:
             print('\nAll tables loaded into raw tables correctly\n')
@@ -470,17 +458,13 @@ class HFSLoadData(object):
             tables and hfs_load_count_info'''
         if table_key == 'All':
             for key in self.load_inline_dict.keys():
-                self.connection.query(self.load_inline_dict[key]['sql_delete'],
-                                      df_flag=False)
-                print('Deleting rows from {}'.format(self.load_inline_dict[key]
-                                                     ['table_name']))
+                self.connection.query(self.load_inline_dict[key]['sql_delete'], df_flag=False)
+                print('Deleting rows from {}'.format(self.load_inline_dict[key]['table_name']))
 
             self.connection.query("""DELETE FROM {db}.hfs_load_count_info
                                      where ReleaseNum = {ReleaseNum}"""
-                                  .format(**self.info_dict),
-                                  df_flag=False)
+                                  .format(**self.info_dict), df_flag=False)
         else:
-            self.connection.query(self.load_inline_dict[table_key]
-                                  ['sql_delete'], df_flag=False)
-            print('Deleted rows from {}'.format(self.load_inline_dict
-                                                [table_key]['table_name']))
+            self.connection.query(self.load_inline_dict[table_key]['sql_delete'], df_flag=False)
+
+            print('Deleted rows from {}'.format(self.load_inline_dict[table_key]['table_name']))
